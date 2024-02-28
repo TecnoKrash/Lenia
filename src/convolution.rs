@@ -1,5 +1,59 @@
 use std::f64::consts::PI;
+use std::ops::{Add, Sub, Mul};
+#[derive(Debug)]
 
+pub struct C{
+    pub re: f64,
+    pub im: f64,
+}
+
+impl Add for C{
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self{
+        Self {
+            re: self.re + other.re,
+            im: self.im + other.im,
+        }
+    }
+}
+impl Sub for C{
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self{
+        Self {
+            re: self.re - other.re,
+            im: self.im - other.im,
+        }
+    }
+}
+impl Mul for C{
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self{
+        Self {
+            re: self.re*other.re - self.im*other.im,
+            im: self.im*other.re + other.im*self.re,
+        }
+    }
+}
+
+impl Copy for C{ }
+
+impl Clone for C{
+    fn clone(&self) -> Self{
+        *self
+    }
+}
+
+impl C{
+    pub fn c(x: f64) -> C{
+        C {
+            re: x,
+            im: 0.0,
+        }
+    }
+}
 
 fn expo(x: f64, p: u32) -> f64{
     if p == 0{
@@ -17,7 +71,8 @@ fn expo(x: f64, p: u32) -> f64{
     }
 }
 
-pub fn fft(p: Vec<f64>, invert: bool) -> Vec<f64>{
+// Apply the fast fourier transform to the list in entry
+pub fn fft(p: Vec<C>, invert: bool) -> Vec<C>{
 
     let n: i32 = p.len() as i32;
 
@@ -26,19 +81,25 @@ pub fn fft(p: Vec<f64>, invert: bool) -> Vec<f64>{
     }
 
     let np = f64::from(n);
+    let n2 = (n/2) as usize;
 
-    let w: f64;
+    let mut w: Vec<C> = vec![];
+
+    let mut theta = (2.0 * PI)/np;
 
     if invert {
-        w = (1.0/np)*(- (2.0 * PI)/np).exp();
+        theta = -theta; 
     } 
 
-    else{
-        w = ((2.0 * PI)/np).exp();
+    for j in 0..n2{
+        w.push(C {
+            re: (theta*(f64::from(j as i32))).cos(),
+            im: (theta*(f64::from(j as i32))).sin(),
+        })
     }
 
-    let mut pe: Vec<f64> = vec![];
-    let mut po: Vec<f64> = vec![];
+    let mut pe: Vec<C> = vec![];
+    let mut po: Vec<C> = vec![];
 
     for i in 0..(p.len()){
         if i % 2 == 0 {
@@ -51,13 +112,14 @@ pub fn fft(p: Vec<f64>, invert: bool) -> Vec<f64>{
 
     let ye = fft(pe, invert);
     let yo = fft(po, invert);
-    let mut y = vec![0.0; p.len()];
-
-    let n2 = (n/2) as usize;
+    let mut y = vec![C {re: 0.0, im: 0.0}; p.len()];
 
     for j in 0..(n2){
-        y[j] = ye[j] + expo(w,j as u32)*yo[j];
-        y[j + n2] = ye[j] - expo(w,j as u32)*yo[j];
+        y[j] = ye[j] +w[j]*yo[j];
+        y[j + n2] = ye[j] - w[j]*yo[j];
     } 
     y
 }
+
+
+//pub fn 2D-convolution(p1: Vec<f64>, p2: Vec<f64>) -> Vec<f64>{}
