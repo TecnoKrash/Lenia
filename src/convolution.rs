@@ -137,31 +137,32 @@ fn add_zeros(p: &mut Vec<f64>){
     }
 }
 
-fn c_vec(p: Vec<f64>) -> Vec<C>{
-    let mut result: Vec<C> = vec![];
+fn c_vec(p: &mut Vec<f64>) -> Vec<C>{
+    let mut result: Vec<C> = Vec::with_capacity(p.len());
     for i in 0..p.len(){
         result.push(C::c(p[i]));
     }
     result
 }
 
-pub fn convolution_2d(p1: Vec<f64>, p2: Vec<f64>) -> Vec<f64>{
-    let mut p1b = p1.clone();
-    let mut p2b = p2.clone();
+pub fn convolution_2d(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
 
-    for i in 1..p1.len(){
-        p2b.push(0.0)
+    let lp1 = p1.len();
+    let lp2 = p2.len();
+
+    for _i in 1..lp1{
+        p2.push(0.0)
     }
 
-    for j in 1..p2.len(){
-        p1b.push(0.0)
+    for _j in 1..lp2{
+        p1.push(0.0)
     }
 
-    add_zeros(&mut p1b);
-    add_zeros(&mut p2b);
+    add_zeros(p1);
+    add_zeros(p2);
 
-    let cp1 = c_vec(p1b);
-    let cp2 = c_vec(p2b);
+    let cp1 = c_vec(p1);
+    let cp2 = c_vec(p2);
 
     let fp1 = fft(cp1, false);
     let fp2 = fft(cp2, false);
@@ -169,17 +170,64 @@ pub fn convolution_2d(p1: Vec<f64>, p2: Vec<f64>) -> Vec<f64>{
     let n = fp1.len() as u32;
     let np = f64::from(n);
 
-    let mut point = vec![];
+    let mut point = Vec::with_capacity(fp1.len());
 
     for i in 0..fp1.len(){
         point.push(fp1[i]*fp2[i]);
     }
 
     let result_c = fft(point, true);
-    let mut result: Vec<f64> = vec![];
+    let mut result: Vec<f64> = Vec::with_capacity(fp1.len());
 
-    for k in 0..(p1.len()+p2.len() - 1){
+    for k in 0..(lp1+lp2 - 1){
         result.push((1.0/np)*result_c[k].re);
     }
     result
+}
+
+
+pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+    let mut t = Vec::with_capacity(f.len());
+
+    let lf = f[0].len();
+    let mk = kernel[0].len()/2;
+    
+
+    for i in 0..lf{
+        let mut ti = Vec::with_capacity(lf + 2*mk );
+
+        for j in (lf - mk)..(2*lf + mk){
+            ti.push(f[i][j%lf]);
+        } 
+
+        t.push(ti);
+    }
+    t
+}
+
+pub fn linearisation(m: & Vec<Vec<f64>>, size: usize) -> Vec<f64>{
+
+    let mut result = Vec::with_capacity(size);
+
+    for i in 0..m.len(){
+       for j in 0..size{
+            if j < m[i].len(){
+                result.push(m[i][j]);
+                continue
+            }
+            result.push(0.0); 
+       } 
+    }
+
+    result
+}
+
+pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
+
+    let mut t = linearisation(f, f.len());
+    let mut k = linearisation(& kernel, f.len());
+
+    let conv = convolution_2d(&mut t,&mut k);
+
+    println!("{:?}\n", conv);
 }
