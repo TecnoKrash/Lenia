@@ -187,14 +187,18 @@ pub fn convolution_2d(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
 
 
 pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
-    let mut t = Vec::with_capacity(f.len());
 
     let lf = f[0].len();
     let mk = kernel[0].len()/2;
-    
+
+    let mut t = Vec::with_capacity(f.len() + 2*mk);
+
+    for _i in 0..mk{
+        t.push(vec![0.]); 
+    }
 
     for i in 0..lf{
-        let mut ti = Vec::with_capacity(lf + 2*mk );
+        let mut ti = Vec::with_capacity(lf + 2*mk);
 
         for j in (lf - mk)..(2*lf + mk){
             ti.push(f[i][j%lf]);
@@ -202,6 +206,12 @@ pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
 
         t.push(ti);
     }
+
+    for i in 0..mk{
+        t[i] = t[f.len()-mk+i+1].clone();
+        t.push(t[i+mk].clone()); 
+    }
+
     t
 }
 
@@ -224,10 +234,35 @@ pub fn linearisation(m: & Vec<Vec<f64>>, size: usize) -> Vec<f64>{
 
 pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
 
+    let lf = f[0].len();
+    let mk = kernel[0].len()/2;
+
     let mut t = linearisation(f, f.len());
     let mut k = linearisation(& kernel, f.len());
+
+    println!("{:?}\n", t);
+    println!("{}",t.len());
 
     let conv = convolution_2d(&mut t,&mut k);
 
     println!("{:?}\n", conv);
+    println!("{}\n", conv.len());
+    let start = kernel.len()*kernel.len()-1 + mk*(lf+1);
+    let end  = start + (f.len()-2*mk)*lf -2*mk;
+    
+    let mut k:usize = start;
+    while k < end{
+        let i = (k-start)/lf;
+        let j = (k-start)%lf;
+
+        print!("{} ", i);
+
+        if j == (lf - 2*mk){
+                k += 2*mk;
+                continue
+        }
+
+        f[i+mk][j+mk] = conv[k];
+        k += 1;
+    }
 }

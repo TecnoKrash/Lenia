@@ -54,15 +54,16 @@ fn main() {
         f.push(ligne);
     }
 
-    let kernel = vec![vec![1.0/9.0,1.0/9.0,1.0/9.0],vec![1.0/9.0,1.0/9.0,1.0/9.0],vec![1.0/9.0,1.0/9.0,1.0/9.0]];
+    let kernel = vec![vec![0.,0.,0.],vec![0.,1.,0.],vec![0.,0.,0.]];
 
     print_matrice(&f, &"f");
     print_matrice(&kernel, &"kernel");
 
-    let t = tore_format(&f,&kernel);
+    let mut t = tore_format(&f,&kernel);
 
     print_matrice(&t, "t");
 
-    convolution_3d(&mut f, kernel);
+    convolution_3d(&mut t, kernel);
 
+    print_matrice(&t, "t");
 }
