@@ -1,9 +1,11 @@
 mod init;
 mod convolution;
+mod sdl;
 
 use rand::prelude::*;
 use std::time::SystemTime;
 use crate::convolution::*;
+use crate::sdl::sdl_test;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -37,6 +39,7 @@ fn main() {
     let duration = end.duration_since(start).unwrap();
     println!("it took {:?}", duration);
     */
+    /*
     let l = 5;
 
     let mut f = Vec::with_capacity(l);
@@ -66,4 +69,6 @@ fn main() {
     convolution_3d(&mut t, kernel);
 
     print_matrice(&t, "t");
+    */
+    sdl_test();
 }
