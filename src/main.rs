@@ -14,8 +14,7 @@ pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     }
 }
 
-fn main() {
-    /*
+pub fn duration_test(){
     let mut rng = rand::thread_rng();
 
     let mut nums1: Vec<i32> = (0..10000).collect();
@@ -33,13 +32,14 @@ fn main() {
     }
 
     let start = SystemTime::now(); 
-    let _p = convolution_2d(p1, p2);
+    let _p = convolution_2d(& mut p1, & mut p2);
     let end = SystemTime::now();
     
     let duration = end.duration_since(start).unwrap();
     println!("it took {:?}", duration);
-    */
-    /*
+}
+
+pub fn convolution_test(n : i32){
     let l = 5;
 
     let mut f = Vec::with_capacity(l);
@@ -57,18 +57,35 @@ fn main() {
         f.push(ligne);
     }
 
-    let kernel = vec![vec![0.,0.,0.],vec![0.,1.,0.],vec![0.,0.,0.]];
+    let kernel_5 = vec![vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,1.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.]];
+    let kernel_3 = vec![vec![0.,0.,0.],vec![0.,1.,0.],vec![0.,0.,0.]];
 
     print_matrice(&f, &"f");
-    print_matrice(&kernel, &"kernel");
+    if n == 5{ 
+        print_matrice(&kernel_5, &"kernel_5");
+        let mut t = tore_format(&f,&kernel_5);
+        print_matrice(&t, "t");
 
-    let mut t = tore_format(&f,&kernel);
+        convolution_3d(&mut t, kernel_5);
+        print_matrice(&t, "t");
+    }
+    else {
+        print_matrice(&kernel_3, &"kernel_3");
+        let mut t = tore_format(&f,&kernel_3);
+        print_matrice(&t, "t");
 
-    print_matrice(&t, "t");
+        convolution_3d(&mut t, kernel_3);
+        print_matrice(&t, "t");
+    }
 
-    convolution_3d(&mut t, kernel);
 
-    print_matrice(&t, "t");
-    */
-    sdl_test();
+
+    print_matrice(&f, &"f");
+
+}
+
+fn main() {
+    //sdl_test();
+    //duration_test();
+    convolution_test(5);
 }

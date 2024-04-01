@@ -191,6 +191,8 @@ pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     let lf = f[0].len();
     let mk = kernel[0].len()/2;
 
+    println!("f.len() : {}, mk : {}\n", f.len(), mk);
+
     let mut t = Vec::with_capacity(f.len() + 2*mk);
 
     for _i in 0..mk{
@@ -208,7 +210,7 @@ pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     }
 
     for i in 0..mk{
-        t[i] = t[f.len()-mk+i+1].clone();
+        t[i] = t[f.len()+i].clone();
         t.push(t[i+mk].clone()); 
     }
 
@@ -240,29 +242,138 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
     let mut t = linearisation(f, f.len());
     let mut k = linearisation(& kernel, f.len());
 
-    println!("{:?}\n", t);
-    println!("{}",t.len());
+    //println!("{:?}\n", t);
+    //println!("{}",t.len());
 
     let conv = convolution_2d(&mut t,&mut k);
-
-    println!("{:?}\n", conv);
-    println!("{}\n", conv.len());
-    let start = kernel.len()*kernel.len()-1 + mk*(lf+1);
-    let end  = start + (f.len()-2*mk)*lf -2*mk;
     
+    println!("{:?}\n", conv);
+    //println!("{}\n", conv.len());
+    let start = 2*mk*(lf+1);
+    let end  = start + (f.len()-1-2*mk)*lf + lf - 2*mk;
+
+    println!("conv[mk*(lf+1)] : {}\n", conv[mk*(lf+1)]);
+    println!("conv[mk*(lf+1)-1] : {}\n", conv[mk*(lf+1)-1]);
+    println!("mk*(lf+1) : {}\n", mk*(lf+1));
+
+    println!("start : {}, conv[start] : {}\n", start, conv[start]);
+    println!("conv[46] : {}\n", conv[46]);
+    println!("conv[47] : {}\n", conv[47]);
+    println!("conv[48] : {}\n", conv[48]);
+    println!("end : {}, conv[end] : {}\n", end, conv[end]);
+     
+    // Interior of the tore
     let mut k:usize = start;
-    while k < end{
+    loop{
+        if k >= end{break}
+
         let i = (k-start)/lf;
         let j = (k-start)%lf;
 
-        print!("{} ", i);
-
         if j == (lf - 2*mk){
-                k += 2*mk;
-                continue
+            k += 2*mk;
+             continue
         }
+
+        //println!("k : {}", k);
+        //println!("i : {}", i);
+        //println!("j : {}", j);
+        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
 
         f[i+mk][j+mk] = conv[k];
         k += 1;
     }
+
+    
+    // Botom right corner
+    k = start;
+    loop{
+        let i = (k-start)/lf;
+        let j = (k-start)%(mk+1);
+
+        if i == mk {break}
+
+        if j == mk{
+            k += lf-mk;
+            continue
+        }
+
+        //println!("k : {}", k);
+        //println!("i : {}", i);
+        //println!("j : {}", j);
+        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+
+        f[i+lf-mk][j+lf-mk] = conv[k];
+        k += 1;
+
+    }
+
+    
+    // Botom center 
+    k = start;
+    loop{
+        if k-start >= mk*lf {break}
+
+        let i = (k-start)/lf;
+        let j = (k-start)%lf;
+
+        if j == (lf - 2*mk){
+            k += 2*mk;
+            continue
+        }
+
+        //println!("k : {}", k);
+        //println!("i : {}", i);
+        //println!("j : {}", j);
+        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+
+        f[i+lf-mk][j+mk] = conv[k];
+        k += 1;
+    }
+
+    // Botom left corner 
+    k = start + lf - 3*mk;
+    loop{
+        let i = (k + 3*mk - start - lf)/mk;
+        let j = (k + 3*mk - start - lf)%mk;
+
+        if i == mk {break}
+
+        if j == mk{
+            k += lf;
+            continue
+        }
+
+        println!("k : {}", k);
+        println!("i : {}", i);
+        println!("j : {}", j);
+        println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+
+        f[i+lf-mk][j] = 0.;
+        k += 1;
+    }
+
+    /*
+
+    // left center
+    k = start + lf - 3*mk;
+    loop{
+        let i = (k + 3*mk - start - lf)/mk;
+        let j = (k + 3*mk - start - lf)%mk;
+
+        //println!("k : {}\n", k);
+        //println!("i : {}\n", i);
+        //println!("j : {}\n", j);
+
+        if i == lf-2*mk {break}
+
+        if j == mk{
+            k += lf-mk;
+            continue
+        }
+
+        f[i+mk][j] = conv[k];
+        k += 1;
+    }
+    */ 
 }

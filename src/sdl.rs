@@ -4,12 +4,13 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
+use sdl2::video::FullscreenType::Desktop;
 
 pub fn sdl_test() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo", 800, 600)
+    let mut window = video_subsystem.window("rust-sdl2 demo", 800, 600)
         .position_centered()
         .build()
         .unwrap();
@@ -40,10 +41,14 @@ pub fn sdl_test() {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
+                Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
+                    i = 255-i;
+                }
                 _ => {}
             }
         }
         // The rest of the game loop goes here...
+        //let _res = window.set_fullscreen(Desktop);
 
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
