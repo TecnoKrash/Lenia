@@ -5,7 +5,7 @@ mod sdl;
 use rand::prelude::*;
 use std::time::SystemTime;
 use crate::convolution::*;
-use crate::sdl::sdl_test;
+use crate::sdl::sdl_main;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -85,7 +85,7 @@ pub fn convolution_test(n : i32){
 }
 
 fn main() {
-    //sdl_test();
-    //duration_test();
-    convolution_test(5);
+    sdl_main();
+    // duration_test();
+    // convolution_test(5);
 }

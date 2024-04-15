@@ -289,7 +289,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
     k = start;
     loop{
         let i = (k-start)/lf;
-        let j = (k-start)%(mk+1);
+        let j = (k-start)%lf;
 
         if i == mk {break}
 
@@ -298,17 +298,17 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
             continue
         }
 
-        //println!("k : {}", k);
-        //println!("i : {}", i);
-        //println!("j : {}", j);
-        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j+mk]);
 
         f[i+lf-mk][j+lf-mk] = conv[k];
         k += 1;
 
     }
 
-    
+
     // Botom center 
     k = start;
     loop{
@@ -322,48 +322,44 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
             continue
         }
 
-        //println!("k : {}", k);
-        //println!("i : {}", i);
-        //println!("j : {}", j);
-        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j+mk]);
 
         f[i+lf-mk][j+mk] = conv[k];
         k += 1;
     }
 
+
     // Botom left corner 
     k = start + lf - 3*mk;
     loop{
-        let i = (k + 3*mk - start - lf)/mk;
-        let j = (k + 3*mk - start - lf)%mk;
+        let i = (k + 3*mk - start - lf)/lf;
+        let j = (k + 3*mk - start - lf)%lf;
 
         if i == mk {break}
 
         if j == mk{
-            k += lf;
+            k += lf-mk;
             continue
         }
 
-        println!("k : {}", k);
-        println!("i : {}", i);
-        println!("j : {}", j);
-        println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j]);
 
-        f[i+lf-mk][j] = 0.;
+        f[i+lf-mk][j] = conv[k];
         k += 1;
     }
 
-    /*
 
     // left center
     k = start + lf - 3*mk;
     loop{
-        let i = (k + 3*mk - start - lf)/mk;
-        let j = (k + 3*mk - start - lf)%mk;
-
-        //println!("k : {}\n", k);
-        //println!("i : {}\n", i);
-        //println!("j : {}\n", j);
+        let i = (k + 3*mk - start - lf)/lf;
+        let j = (k + 3*mk - start - lf)%lf;
 
         if i == lf-2*mk {break}
 
@@ -372,8 +368,100 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: Vec<Vec<f64>>){
             continue
         }
 
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j]);
+
         f[i+mk][j] = conv[k];
         k += 1;
     }
-    */ 
+
+    // up left corner
+    k = end - (mk-1)*lf - mk;
+    loop{
+        let i = (k + (mk-1)*lf + mk - end)/lf;
+        let j = (k + (mk-1)*lf + mk - end)%lf;
+
+        if i == mk {break}
+
+        if j == mk{
+            k += lf-mk;
+            continue
+        }
+
+        //println!("k : {}", k);
+        //println!("i : {}", i);
+        //println!("j : {}", j);
+        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i][j]);
+
+        f[i][j] = conv[k];
+        k += 1;
+    }
+
+    // up middle
+    k = end - mk*lf +2*mk;
+    loop{
+        let i = (k + mk*lf - 2*mk - end)/lf;
+        let j = (k + mk*lf - 2*mk - end)%lf;
+
+        if i == mk {break}
+
+        if j == lf-2*mk{
+            k += 2*mk;
+            continue
+        }
+
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i][j+mk]);
+
+        f[i][j+mk] = conv[k];
+        k += 1;
+    }
+
+    // up rigth corner
+    k = end - mk*lf +2*mk;
+    loop{
+        let i = (k + mk*lf - 2*mk - end)/lf;
+        let j = (k + mk*lf - 2*mk - end)%lf;
+
+        if i == mk {break}
+
+        if j == mk{
+            k += lf - mk;
+            continue
+        }
+
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i][j+lf-mk]);
+
+        f[i][j+lf-mk] = conv[k];
+        k += 1;
+    }
+
+    // rigth middel
+    k = start;
+    loop{
+        let i = (k - start)/lf;
+        let j = (k - start)%lf;
+
+        if i == lf-2*mk {break}
+
+        if j == mk{
+            k += lf - mk;
+            continue
+        }
+
+        println!("k : {}", k);
+        println!("i : {}", i);
+        println!("j : {}", j);
+        println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+lf-mk]);
+
+        f[i+mk][j+lf-mk] = conv[k];
+        k += 1;
+    }
 }
