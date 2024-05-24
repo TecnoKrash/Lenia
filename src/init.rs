@@ -33,5 +33,23 @@ impl Field {
         self.m[chanel][self.k_size + x][self.k_size + y]
     }
 
-    
+    pub fn fill(self: &mut Field,chan: usize, val: f64){
+        for i in 0..self.h{
+            for j in 0..self.l{
+                self.m[chan][i][j] = val;
+            }
+        }
+    }
+
+    pub fn fill_deg(self: &mut Field, chan: usize, start: f64, end: f64){
+        for i in 0..self.h{
+            for j in 0..self.l{
+                let fi = i as f64;
+                let fj = j as f64;
+                let fl = self.l as f64;
+                let fh = self.h as f64;
+                self.m[chan][i][j] = start + (fi+fj)*(end)/(fh+fl);
+            }
+        }
+    }
 }
