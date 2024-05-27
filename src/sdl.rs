@@ -14,7 +14,11 @@ use sdl2::mouse::MouseWheelDirection;
 
 
 // Other imports
+use std::time::SystemTime;
+
 use crate::init::*;
+use crate::convolution::*;
+use crate::growth::*;
 
 pub fn found_color(val: f64, chan: usize) -> (u8,u8,u8){
     let dgd: [((u8,u8,u8),(u8,u8,u8)); 1] = [((0 as u8,0 as u8,0 as u8), (255 as u8,0 as u8,0 as u8))];
@@ -45,6 +49,22 @@ pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, x_start: i32, y_sta
     }
 }
 
+
+pub fn display_kernel(k: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
+    let h = k.len();
+    for x in 0..h{
+        for y in 0..h{
+            //println!("k[{}][{}]\n", x, y);
+            let red = (k[x][y]*255.0) as u8;
+            //println!("{}\n", red);
+            canvas.set_draw_color(Color::RGB(red,0,0));
+            let r = Rect::new(x_start+(x as i32)*pixel_size, y_start + (y as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r);
+        }
+    }
+}
+
+
 pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32, pixel_size: i32) -> (i32,i32,i32){
     let x_decalage = (x_mouse- x_start) / pixel_size;
     let y_decalage = (y_mouse- y_start) / pixel_size;
@@ -67,6 +87,28 @@ pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32
     return (new_x,new_y,new_pixel_size)
 }
 
+pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64){
+
+    let s1 = SystemTime::now();
+    let mut tore = tore_format(&(f.m[0]),&k);
+    let s2 = SystemTime::now();
+
+    convolution_3d(&mut tore, k);
+    let s3 = SystemTime::now();
+
+    growth(f, tore, dt);
+    let s4 = SystemTime::now();
+
+    let d1 = s2.duration_since(s1).unwrap();
+    let d2 = s3.duration_since(s2).unwrap();
+    let d3 = s4.duration_since(s3).unwrap();
+
+    //println!("Duration : tore {:?}, conv3D {:?}, growth {:?}\n", d1, d2, d3);
+
+
+}
+
+
 pub fn sdl_main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -86,8 +128,11 @@ pub fn sdl_main() {
     let mut i = 0;
     //let mut monte = true;
     
-    let mut f = Field::new_field(100,50,1);
+    let mut f = Field::new_field(50,50,1);
     f.fill_deg(0,0.0,1.0);
+
+    let k_h = 25;
+    let mut k = kernel_init(Kernel::Ring, k_h);
 
     let mut drag = false;
 
@@ -101,7 +146,15 @@ pub fn sdl_main() {
     let mut x_mouse = 0;
     let mut y_mouse = 0;
 
-    let mut pixel_size = 20;
+    let mut pixel_size = 10;
+
+    let frames = 60;
+    
+    let mut compt = 0;
+
+    let start = SystemTime::now();
+
+    display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
 
     // Event l
     'running: loop {
@@ -125,7 +178,19 @@ pub fn sdl_main() {
         let _ = canvas.draw_rect(r);
         // canvas.clear();
         */
+        compt += 1;
+        // println!("frame n°{}\n", compt);
+
+        evolve_1chan(&mut f, &k, 1.0/frames as f64);
+        let start = SystemTime::now();
         display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
+        let end = SystemTime::now();
+
+        let duration = end.duration_since(start).unwrap();
+
+        // println!("the display took {:?}\n", duration);
+        
+        //display_kernel(&k, &mut canvas,x_curent, y_curent, pixel_size);
         
         if drag {
             let x_new = event_pump.mouse_state().x();
@@ -187,14 +252,15 @@ pub fn sdl_main() {
                 Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => { 
                     drag = false
                 },
-                Event::MouseWheel { direction: MouseWheelDirection::Normal, ..  } => {
-                    zoom_in = true;
-                    update_x = true;
-                }  
                 Event::MouseWheel { direction: MouseWheelDirection::Flipped, ..  } => {
                     zoom_out = true;
                     update_x = true;
                 } 
+                Event::MouseWheel { direction: MouseWheelDirection::Normal, ..  } => {
+                    
+                    zoom_in = true;
+                    update_x = true;
+                }  
                 _ => {}
             }
         }
@@ -209,6 +275,6 @@ pub fn sdl_main() {
         //let _res = window.set_fullscreen(Desktop);
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / frames));
     }
 }

@@ -60,55 +60,27 @@ impl Field {
 }
 
 pub fn kernel_init(k_type: Kernel, h: usize) -> Vec<Vec<f64>>{
-    match k_type{
-        Kernel::Ring => {
-            return ring_kernel(h)
-        }
-    }
-}
+    let mut result = vec![vec![0.0 : h] : h];
 
-
-fn ring_kernel(h: usize) -> Vec<Vec<f64>>{
-    let mut result = vec![vec![0.0 ; h]; h];
-
-    let rayon = h/2;
+    let rayon = h/2 +1;
     let mut sum = 0.0;
     
     for x in 0..h{
         for y in 0..h {
-            let dx;
-            let dy;
-            if x > rayon { dx =  x-rayon}
-            else { dx = rayon-x}
-            if y > rayon { dy =  y-rayon}
-            else { dy = rayon-y}
-
-            let distance = ((dx*dx + dy*dy) as f64).sqrt()/(rayon as f64);
+            let distance = (((x-rayon)*(x-rayon) + (y-rayon)*(y-rayon)) as f64).sqrt()/rayon;
             if distance <= 1.0 {
-                let d_gauss = gaussian(0.5,0.15,distance);
+                let d_gauss = gaussian(distance,0.5,0.15);
                 sum += d_gauss;
                 result[x][y] = d_gauss;
             }
         }
     }
-    
+
     for i in 0..h{
         for j in 0..h{
             result[i][j] /= sum;
         }
     }
-
-    /*
-    sum = 0.0;
-
-    for i in 0..h{
-        for j in 0..h{
-            sum += result[i][j];
-        }
-    }
-    
-    println!("{}\n", sum);
-    */
 
     result
 }

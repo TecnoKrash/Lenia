@@ -1,11 +1,13 @@
 mod init;
 mod convolution;
 mod sdl;
+mod growth;
 
 use rand::prelude::*;
 use std::time::SystemTime;
 use crate::convolution::*;
 use crate::sdl::sdl_main;
+use crate::init::*;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -66,7 +68,7 @@ pub fn convolution_test(n : i32){
         let mut t = tore_format(&f,&kernel_5);
         print_matrice(&t, "t");
 
-        convolution_3d(&mut t, kernel_5);
+        convolution_3d(&mut t, &kernel_5);
         print_matrice(&t, "t");
     }
     else {
@@ -74,7 +76,7 @@ pub fn convolution_test(n : i32){
         let mut t = tore_format(&f,&kernel_3);
         print_matrice(&t, "t");
 
-        convolution_3d(&mut t, kernel_3);
+        convolution_3d(&mut t, &kernel_3);
         print_matrice(&t, "t");
     }
 
@@ -84,7 +86,14 @@ pub fn convolution_test(n : i32){
 
 }
 
+pub fn kernel_test(k_type: Kernel, h: usize){
+    let kernel = kernel_init(k_type, h);
+
+    print_matrice(&kernel, &"Kernel");
+}
+
 fn main() {
+    //kernel_test(Kernel::Ring, 13);
     sdl_main();
     // duration_test();
     // convolution_test(5);
