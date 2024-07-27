@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use crate::convolution::*;
 use crate::sdl::sdl_main;
 use crate::init::*;
+use crate::growth::*;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -19,22 +20,22 @@ pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
 pub fn duration_test(){
     let mut rng = rand::thread_rng();
 
-    let mut nums1: Vec<i32> = (0..10000).collect();
+    let mut nums1: Vec<i32> = (0..100000).collect();
     nums1.shuffle(&mut rng);
 
-    let mut nums2: Vec<i32> = (0..10000).collect();
+    let mut nums2: Vec<i32> = (0..100000).collect();
     nums2.shuffle(&mut rng);
 
-    let mut p1 = Vec::with_capacity(10000);
-    let mut p2 = Vec::with_capacity(10000);
+    let mut p1 = Vec::with_capacity(100000);
+    let mut p2 = Vec::with_capacity(100000);
 
-    for i in 0..10000{
+    for i in 0..100000{
         p1.push(f64::from(nums1[i]));
         p2.push(f64::from(nums2[i]));
     }
 
     let start = SystemTime::now(); 
-    let _p = convolution_2d(& mut p1, & mut p2);
+    let _p = fast_convolution_2d(& mut p1, & mut p2);
     let end = SystemTime::now();
     
     let duration = end.duration_since(start).unwrap();
@@ -59,7 +60,7 @@ pub fn convolution_test(n : i32){
         f.push(ligne);
     }
 
-    let kernel_5 = vec![vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,1.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.]];
+    let kernel_5 = vec![vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.]];
     let kernel_3 = vec![vec![0.,0.,0.],vec![0.,1.,0.],vec![0.,0.,0.]];
 
     print_matrice(&f, &"f");
@@ -68,7 +69,7 @@ pub fn convolution_test(n : i32){
         let mut t = tore_format(&f,&kernel_5);
         print_matrice(&t, "t");
 
-        convolution_3d(&mut t, &kernel_5);
+        convolution_3d_v2(&mut t, &kernel_5);
         print_matrice(&t, "t");
     }
     else {
@@ -92,9 +93,34 @@ pub fn kernel_test(k_type: Kernel, h: usize){
     print_matrice(&kernel, &"Kernel");
 }
 
+pub fn gaussian_test(n : usize, mu: f64, sigma: f64){
+    for i in 0..n{
+        let k = (i as f64)/(n as f64);
+        let x = -1.0 + 2.0*gaussian(mu, sigma, (i as f64)/(n as f64));
+        println!("k {}, x {}", k, x);
+    }
+}
+
+pub fn convolution_correction_test(){
+    let mut p1 = vec![1.0,2.0,3.0,4.0,5.0];
+    let mut p2 = vec![5.0,6.0,7.0,8.0,9.0];
+
+    let mut p1b = vec![1.0,2.0,3.0,4.0,5.0];
+    let mut p2b = vec![5.0,6.0,7.0,8.0,9.0];
+
+    let c1 = convolution_2d(&mut p1,&mut p2);
+    let c2 = fast_convolution_2d(&mut p1b, &mut p2b);
+
+    println!("conv_2d : {:?}\nfast_conv_2d : {:?}", c1, c2);
+}
+
+
+
 fn main() {
-    //kernel_test(Kernel::Ring, 13);
+    // kernel_test(Kernel::Ring, 13);
     sdl_main();
     // duration_test();
     // convolution_test(5);
+    // gaussian_test(1000, 0.15, 0.015)
+    // convolution_correction_test() 
 }

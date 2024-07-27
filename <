@@ -21,14 +21,11 @@ use crate::convolution::*;
 use crate::growth::*;
 
 pub fn found_color(val: f64, chan: usize) -> (u8,u8,u8){
-    let dgd: [((u8,u8,u8),(u8,u8,u8)); 1] = [((255 as u8,255 as u8,255 as u8), (255 as u8,0 as u8,0 as u8))];
+    let dgd: [((u8,u8,u8),(u8,u8,u8)); 1] = [((0 as u8,0 as u8,0 as u8), (255 as u8,0 as u8,0 as u8))];
     let mut res = (0,0,0);
-    //res.0 = dgd[chan].0.0 + (val*f64::from(dgd[chan].1.0 + dgd[chan].0.0)) as u8;
-    //res.1 = dgd[chan].0.1 + (val*f64::from(dgd[chan].1.1 + dgd[chan].0.1)) as u8;
-    //res.2 = dgd[chan].0.2 + (val*f64::from(dgd[chan].1.2 + dgd[chan].0.2)) as u8;
-    res.0 = 255;
-    res.1 = 255 - (val*255.0) as u8;
-    res.2 = 255 - (val*255.0) as u8;
+    res.0 = dgd[chan].0.0 + (val*f64::from(dgd[chan].1.0 + dgd[chan].0.0)) as u8;
+    res.1 = dgd[chan].0.1 + (val*f64::from(dgd[chan].1.1 + dgd[chan].0.1)) as u8;
+    res.2 = dgd[chan].0.2 + (val*f64::from(dgd[chan].1.2 + dgd[chan].0.2)) as u8;
     res
 }
 
@@ -142,7 +139,7 @@ pub fn sdl_main() {
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
-    f.add(Motif::Rand, 10, 10);
+    f.add(Agent::Orbium, 20, 20);
 
     let k_h = 25;
     let k = kernel_init(Kernel::Ring, k_h);
@@ -252,7 +249,6 @@ pub fn sdl_main() {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    println!("Field : {:?}\n", f.m);
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
