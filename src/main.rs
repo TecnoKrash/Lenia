@@ -2,13 +2,15 @@ mod init;
 mod convolution;
 mod sdl;
 mod growth;
+mod file;
 
 use rand::prelude::*;
 use std::time::SystemTime;
 use crate::convolution::*;
-use crate::sdl::sdl_main;
+use crate::sdl::*;
 use crate::init::*;
 use crate::growth::*;
+use crate::file::*;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -114,6 +116,23 @@ pub fn convolution_correction_test(){
     println!("conv_2d : {:?}\nfast_conv_2d : {:?}", c1, c2);
 }
 
+pub fn color_test(){
+    for i in 0..11{
+        println!("{} : {:?}\n", i, found_color(i as f64/10.0, 0));
+    }
+}
+
+pub fn file_test(){
+    let mut f = Field::new_field(10,10,1);
+    f.fill(0,0.4645343423765453);
+    // write_in_file();
+    // read_in_file();
+
+    write_field("storage/test.txt", f.m[0].clone());
+    let nf = read_field("storage/test.txt");
+
+    print_matrice(&nf, "nf");
+}
 
 
 fn main() {
@@ -123,4 +142,7 @@ fn main() {
     // convolution_test(5);
     // gaussian_test(1000, 0.15, 0.015)
     // convolution_correction_test() 
+    // color_test();
+    // println!("{}\n", 9.99 as u8);
+    // file_test();
 }

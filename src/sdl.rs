@@ -19,16 +19,43 @@ use std::time::SystemTime;
 use crate::init::*;
 use crate::convolution::*;
 use crate::growth::*;
+use crate::file::*;
 
-pub fn found_color(val: f64, chan: usize) -> (u8,u8,u8){
-    let dgd: [((u8,u8,u8),(u8,u8,u8)); 1] = [((255 as u8,255 as u8,255 as u8), (255 as u8,0 as u8,0 as u8))];
+pub fn diff(a: u8, b: u8) -> u8{
+    if a > b{
+        return a - b;
+    }
+    b - a
+}
+
+pub fn found_color(val: f64, _chan: usize) -> (u8,u8,u8){
+    //let dgd: [(u8,u8,u8); 11] = [(255,255,255), (255,204,204), (255, 204, 153), (255, 255, 102), (153, 255, 51), (0,255, 0), (0, 204, 102), (0, 153, 153), (0, 51, 102), (0, 0, 51), (0, 0, 0)];
+    //let dgd: [(u8,u8,u8); 11] = [(255,255,255), (255,255,204), (204, 255, 153), (178, 255, 102), (51, 255, 51), (0,255, 0), (0, 204, 102), (0, 153, 76), (0, 102, 102), (0, 51, 51), (0, 0, 0)];
+    let dgd: [(u8,u8,u8); 11] = [(255,255,255), (229,255,204), (153, 255, 153), (102, 255, 102), (51, 255, 153), (0,255, 128), (0, 204, 204), (0, 153, 153), (0, 51, 102), (0, 25, 51), (0, 0, 0)];
     let mut res = (0,0,0);
-    //res.0 = dgd[chan].0.0 + (val*f64::from(dgd[chan].1.0 + dgd[chan].0.0)) as u8;
-    //res.1 = dgd[chan].0.1 + (val*f64::from(dgd[chan].1.1 + dgd[chan].0.1)) as u8;
-    //res.2 = dgd[chan].0.2 + (val*f64::from(dgd[chan].1.2 + dgd[chan].0.2)) as u8;
-    res.0 = 255;
-    res.1 = 255 - (val*255.0) as u8;
-    res.2 = 255 - (val*255.0) as u8;
+    if val == 1.0 {return (0,0,0);}
+    let i = (val*10.0) as usize;
+    let a = dgd[i];
+    let b = dgd[i+1];
+    let v2 = val*10.0 - i as f64;
+    if a.0 > b.0{ 
+        res.0 = a.0 - ((diff(a.0,b.0) as f64)*v2) as u8;
+    }
+    else {
+        res.0 = a.0 + ((diff(a.0,b.0) as f64)*v2) as u8;
+    }
+    if a.1 > b.1{ 
+        res.1 = a.1 - ((diff(a.1,b.1) as f64)*v2) as u8;
+    }
+    else {
+        res.1 = a.1 + ((diff(a.1,b.1) as f64)*v2) as u8;
+    }
+    if a.2 > b.2{ 
+        res.2 = a.2 - ((diff(a.2,b.2) as f64)*v2) as u8;
+    }
+    else {
+        res.2 = a.2 + ((diff(a.2,b.2) as f64)*v2) as u8;
+    }
     res
 }
 
@@ -69,6 +96,18 @@ pub fn display_kernel(k: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i
 
 pub fn display_tore(){
 }
+
+
+pub fn display_scale(canvas: &mut Canvas<Window>, h: usize, l: usize, x: i32, y: i32){
+    for i in 0..h{
+        let val = (i as f64)/(h as f64);
+        let col_t = found_color(val, i);
+        canvas.set_draw_color(Color::RGB(col_t.0,col_t.1,col_t.2));
+        let r = Rect::new(x, ((y as usize) + h - i).try_into().unwrap(), l.try_into().unwrap(), 0);
+        let _ = canvas.fill_rect(r);
+    }
+}
+    
 
 
 pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32, pixel_size: i32) -> (i32,i32,i32){
@@ -142,7 +181,8 @@ pub fn sdl_main() {
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
-    f.add(Motif::Rand, 10, 10);
+    // f.add(Motif::Rand, 35, 35);
+    f.add(Motif::Orbium, 10, 10);
 
     let k_h = 25;
     let k = kernel_init(Kernel::Ring, k_h);
@@ -155,7 +195,7 @@ pub fn sdl_main() {
     let mut zoom_out = false;
 
 
-    let mut x_curent = 20;
+    let mut x_curent = 100;
     let mut y_curent = 20;
 
     let mut x_mouse = 0;
@@ -165,11 +205,16 @@ pub fn sdl_main() {
 
     let frames = 24;
     
-    let mut compt = 0;
+    let mut save_compt = 1;
+
+    let mut ev = true;
 
     let start = SystemTime::now();
 
-    // display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
+    display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
+    display_scale(&mut canvas,(pixel_size as usize)*100, 50, x_curent + pixel_size*100 + 20,y_curent);
+
+    write_field("storage/save/init.txt", f.m[0].clone());
 
     // Event l
     'running: loop {
@@ -194,11 +239,15 @@ pub fn sdl_main() {
         let _ = canvas.draw_rect(r);
         // canvas.clear();
         */
-        compt += 1;
         // println!("frame n°{}\n", compt);
 
-        evolve_1chan(&mut f, &k, 1.0/frames as f64);
+        if ev {
+            evolve_1chan(&mut f, &k, 1.0/frames as f64);
+        }
+        
         display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
+        display_scale(&mut canvas,(pixel_size as usize)*100, 50, x_curent + pixel_size*100 + 20,y_curent);
+
 
 
 
@@ -252,11 +301,22 @@ pub fn sdl_main() {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    println!("Field : {:?}\n", f.m);
+                    //println!("Field : {:?}\n", f.m);
                     break 'running
                 },
-                Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
-                    i = 255-i
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                    let name = format!("storage/save/s_{}.txt",save_compt);
+                    write_field(&name, f.m[0].clone());
+                    save_compt += 1;
+                },
+                Event::KeyDown { keycode: Some(Keycode::R), .. } => {
+                    let red = reduction(f.m[0].clone());
+                    let name = format!("storage/save/r_{}.txt",save_compt);
+                    write_field(&name, red);
+                    save_compt += 1;
+                },
+                Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                    ev = !ev;
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left,.. } => {
                     if !drag {
