@@ -266,18 +266,19 @@ pub fn fast_convolution_2d(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
 
 pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
 
+    let hf = f.len();
     let lf = f[0].len();
     let mk = kernel[0].len()/2;
 
     // println!("f.len() : {}, mk : {}\n", f.len(), mk);
 
-    let mut t = Vec::with_capacity(f.len() + 2*mk);
+    let mut t = Vec::with_capacity(hf + 2*mk);
 
     for _i in 0..mk{
         t.push(vec![0.]); 
     }
 
-    for i in 0..lf{
+    for i in 0..hf{
         let mut ti = Vec::with_capacity(lf + 2*mk);
 
         for j in (lf - mk)..(2*lf + mk){
@@ -288,7 +289,7 @@ pub fn tore_format(f: &Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     }
 
     for i in 0..mk{
-        t[i] = t[f.len()+i].clone();
+        t[i] = t[hf+i].clone();
         t.push(t[i+mk].clone()); 
     }
 
@@ -322,9 +323,9 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
 
     let t1 = SystemTime::now();
 
-    let mut t = linearisation(f, f.len());
+    let mut t = linearisation(f, f[0].len());
     let t2 = SystemTime::now();
-    let mut k = linearisation(& kernel, f.len());
+    let mut k = linearisation(& kernel, f[0].len());
     let t3 = SystemTime::now();
 
     let d1 = t2.duration_since(t1).unwrap();
@@ -332,7 +333,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
 
     // println!("linearisation : t {:?}, k {:?}\n", d1, d2);
 
-    //println!("{:?}\n", k);
+    // println!("{:?}\n", t);
     //println!("{}",k.len());
 
 
@@ -344,12 +345,12 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
 
     // println!("conv2D : {:?}\n", d3);
 
-    
+    // println!("conv : {:?}", conv);
 
     let si = SystemTime::now();
 
-    let start = 2*mk*(lf+1);
-    let end  = start + (f.len()-1-2*mk)*lf + lf - 2*mk;
+    let start = 2*mk*(lf + 1) ;
+    let end  = start + lf*(hf - 2*mk -1) -1 + lf-2*mk;
 
     // println!("conv[mk*(lf+1)] : {}\n", conv[mk*(lf+1)]);
     // println!("conv[mk*(lf+1)-1] : {}\n", conv[mk*(lf+1)-1]);
@@ -374,14 +375,16 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
              continue
         }
 
-        //println!("k : {}", k);
-        //println!("i : {}", i);
-        //println!("j : {}", j);
-        //println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
+        // println!("k : {}", k);
+        // println!("i : {}", i);
+        // println!("j : {}", j);
+        // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+mk][j+mk]);
 
         f[i+mk][j+mk] = conv[k];
         k += 1;
     }
+
+    /*
 
     
     // Botom right corner
@@ -402,7 +405,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
         // println!("j : {}", j);
         // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j+mk]);
 
-        f[i+lf-mk][j+lf-mk] = conv[k];
+        f[i+hf-mk][j+lf-mk] = conv[k];
         k += 1;
 
     }
@@ -426,7 +429,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
         // println!("j : {}", j);
         // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j+mk]);
 
-        f[i+lf-mk][j+mk] = conv[k];
+        f[i+hf-mk][j+mk] = conv[k];
         k += 1;
     }
 
@@ -449,7 +452,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
         // println!("j : {}", j);
         // println!("conv[k] : {}, f[i][j] : {}\n", conv[k], f[i+lf-mk][j]);
 
-        f[i+lf-mk][j] = conv[k];
+        f[i+hf-mk][j] = conv[k];
         k += 1;
     }
 
@@ -564,6 +567,9 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
         k += 1;
 
     }
+
+    */
+    
     let sf = SystemTime::now();
 
     let duration = sf.duration_since(t1).unwrap();

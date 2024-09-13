@@ -20,6 +20,7 @@ use crate::init::*;
 use crate::convolution::*;
 use crate::growth::*;
 use crate::file::*;
+use crate::learning::*;
 
 pub fn diff(a: u8, b: u8) -> u8{
     if a > b{
@@ -132,7 +133,7 @@ pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32
     return (new_x,new_y,new_pixel_size)
 }
 
-pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64){
+pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, mc: &mut (usize,usize)){
 
     let s1 = SystemTime::now();
     let mut tore = tore_format(&(f.m[0]),&k);
@@ -144,6 +145,8 @@ pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64){
     let s3 = SystemTime::now();
 
     // println!("tore après : {:?}", tore);
+
+    *mc = mass_center(tore.clone(), k.len());
 
     growth(f, tore, dt);
     let s4 = SystemTime::now();
@@ -177,7 +180,7 @@ pub fn sdl_main() {
     let mut i = 0;
     //let mut monte = true;
     
-    let mut f = Field::new_field(100,100,1);
+    let mut f = Field::new_field(150,100,1);
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
@@ -203,11 +206,12 @@ pub fn sdl_main() {
 
     let mut pixel_size = 10;
 
-    let frames = 24;
+    let frames = 12;
     
     let mut save_compt = 1;
 
     let mut ev = true;
+    let mut mc = (0,0);
 
     let start = SystemTime::now();
 
@@ -242,14 +246,15 @@ pub fn sdl_main() {
         // println!("frame n°{}\n", compt);
 
         if ev {
-            evolve_1chan(&mut f, &k, 1.0/frames as f64);
+            evolve_1chan(&mut f, &k, 1.0/frames as f64, &mut mc);
         }
         
         display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
         display_scale(&mut canvas,(pixel_size as usize)*100, 50, x_curent + pixel_size*100 + 20,y_curent);
 
-
-
+        // canvas.set_draw_color(Color::RGB(218,63,2));
+        // let r = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+        // let _ = canvas.fill_rect(r);
 
         //println!("the display took {:?}\n", duration);
         

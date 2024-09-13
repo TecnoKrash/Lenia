@@ -3,6 +3,7 @@ mod convolution;
 mod sdl;
 mod growth;
 mod file;
+mod learning;
 
 use rand::prelude::*;
 use std::time::SystemTime;
@@ -44,16 +45,16 @@ pub fn duration_test(){
     println!("it took {:?}", duration);
 }
 
-pub fn convolution_test(n : i32){
+pub fn convolution_test(n : i32, p: usize, q : usize){
     let l = 5;
 
-    let mut f = Vec::with_capacity(l);
+    let mut f = Vec::with_capacity(l+q);
 
     let mut rng = rand::thread_rng();
 
-    for _i in 0..l{
-        let mut ligne: Vec<f64> = Vec::with_capacity(l);
-        for _j in 0..l{
+    for _i in 0..(l+q){
+        let mut ligne: Vec<f64> = Vec::with_capacity(l+p);
+        for _j in 0..l+p{
             //ligne.push(rng.gen());
             let r:f64 = rng.gen::<f64>() * 10.0 ;
 
@@ -62,7 +63,7 @@ pub fn convolution_test(n : i32){
         f.push(ligne);
     }
 
-    let kernel_5 = vec![vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.],vec![1.,1.,1.,1.,1.]];
+    let kernel_5 = vec![vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,1.,0.,0.],vec![0.,0.,0.,0.,0.],vec![0.,0.,0.,0.,0.]];
     let kernel_3 = vec![vec![0.,0.,0.],vec![0.,1.,0.],vec![0.,0.,0.]];
 
     print_matrice(&f, &"f");
@@ -71,7 +72,7 @@ pub fn convolution_test(n : i32){
         let mut t = tore_format(&f,&kernel_5);
         print_matrice(&t, "t");
 
-        convolution_3d_v2(&mut t, &kernel_5);
+        convolution_3d(&mut t, &kernel_5);
         print_matrice(&t, "t");
     }
     else {
@@ -139,7 +140,7 @@ fn main() {
     // kernel_test(Kernel::Ring, 13);
     sdl_main();
     // duration_test();
-    // convolution_test(5);
+    // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)
     // convolution_correction_test() 
     // color_test();
