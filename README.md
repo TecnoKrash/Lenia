@@ -1,6 +1,6 @@
 # Todo
 
 - Better reduction on saves
-- mass center point
 - vim control
-- neightboor display
+- Space handling stuff
+- goal choise
