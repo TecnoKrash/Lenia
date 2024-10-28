@@ -3,7 +3,7 @@ mod convolution;
 mod sdl;
 mod growth;
 mod file;
-mod learning;
+mod imgep;
 
 use rand::prelude::*;
 use std::time::SystemTime;
@@ -90,8 +90,8 @@ pub fn convolution_test(n : i32, p: usize, q : usize){
 
 }
 
-pub fn kernel_test(k_type: Kernel, h: usize){
-    let kernel = kernel_init(k_type, h);
+pub fn kernel_test(k_type: Kernel){
+    let kernel = kernel_init(k_type);
 
     print_matrice(&kernel, &"Kernel");
 }
@@ -138,7 +138,7 @@ pub fn file_test(){
 
 fn main() {
     // kernel_test(Kernel::Ring, 13);
-    sdl_main();
+    sdl_main(Mode::Learning);
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)

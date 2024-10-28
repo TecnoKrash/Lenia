@@ -100,43 +100,80 @@ pub fn read_field(name: &str) -> Vec<Vec<f64>> {
     return res;
 }
 
-pub fn reduction(f: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
-    let mut xd = f.len();
-    let mut xf = 0;
-    let mut yd = f[0].len();
-    let mut yf = 0;
+pub fn co_calculation(b: (bool,bool), f: Vec<Vec<f64>>) -> (usize,usize,usize,usize){
+
+    let mut co = (f.len()*(1 - b.0 as usize), f.len()*(b.1 as usize), f[0].len(), 0);
+
+    let mut max_white_y = 0;
+
+    let mut co_white_y = (0,0,0,0);
 
     for i in 0..f.len(){
         for j in 0..f[0].len(){
             if f[i][j] != 0.0{
-                if yd > j{
-                    yd = j;
+
+                if (co.2 > j)&&!b.1{
+                    co.2 = j;
                 }
 
-                if yf < j{
-                    yf = j+1;
+                if (co.3 <= j)&&!b.1{
+                    co.3  = j+1;
                 }
 
-                if xd == f.len() {
-                    xd = i
+                if (co.0 == f.len())&&!b.0 {
+                    co.0 = i
                 }
 
-                xf = i+1;
+                if !b.0 {co.1 = i+1;}
             }
+
+            // if f[i][j] == 0.0{
+
         }
     }
+    co
+}
 
-    let mut result = Vec::with_capacity(xf-xd);
+pub fn reduction(f: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
 
-    for i in xd..xf{
-        let mut line = Vec::with_capacity(yf-yd);
-        for j in yd..yf{
-            line.push(f[i][j]);
+    let mut b = (false, false);
+
+    let mut redo = false;
+    
+    let mut co = co_calculation(b,f.clone());
+
+    if (co.0 == 0)&&(co.1 == f.len()){
+        b.0 = true;
+        redo = true;
+    }
+    if (co.2 == 0)&&(co.3 == f[0].len()){
+        b.1 = true;
+        redo = true;
+    }
+
+    println!("co0 : {}, co1 : {}", co.0, co.1);
+    println!("co2 : {}, co3 : {}", co.2, co.3);
+    println!("b0 : {}, b2 : {}", b.0, b.1);
+
+    if redo {co = co_calculation(b,f.clone());}
+
+    println!("co0 : {}, co1 : {}", co.0, co.1);
+    println!("co2 : {}, co3 : {}", co.2, co.3);
+
+    let mut result = Vec::with_capacity(co.1-co.0);
+    
+    for i in co.0..co.1{
+        let mut line = Vec::with_capacity(co.3-co.2);
+        for j in co.2..co.3{
+            line.push(f[i%f.len()][j%f[0].len()]);
         }
         result.push(line);
     }
 
+
     return result;
 }
 
-
+pub fn save_data(){
+    todo!();
+}

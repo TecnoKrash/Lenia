@@ -20,7 +20,12 @@ use crate::init::*;
 use crate::convolution::*;
 use crate::growth::*;
 use crate::file::*;
-use crate::learning::*;
+use crate::imgep::*;
+
+pub enum Mode{
+    Learning,
+    Classic,
+}
 
 pub fn diff(a: u8, b: u8) -> u8{
     if a > b{
@@ -95,7 +100,21 @@ pub fn display_kernel(k: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i
     }
 }
 
-pub fn display_tore(){
+pub fn display_tore(f: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
+    for x in 0..f.len(){
+        for y in 0..f[0].len(){
+            let mut col_t = (0,0,0);
+            let val = &f[x][y];
+            let f =  found_color(*val, 0);
+            col_t.0 += f.0;
+            col_t.1 += f.1;
+            col_t.2 += f.2;
+            
+            canvas.set_draw_color(Color::RGB(col_t.0,col_t.1,col_t.2));
+            let r = Rect::new(x_start+(x as i32)*pixel_size, y_start + (y as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r);
+        }
+    }
 }
 
 
@@ -133,7 +152,7 @@ pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32
     return (new_x,new_y,new_pixel_size)
 }
 
-pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, mc: &mut (usize,usize)){
+pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, mu: f64, sigma: f64){
 
     let s1 = SystemTime::now();
     let mut tore = tore_format(&(f.m[0]),&k);
@@ -146,9 +165,9 @@ pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, mc: &mut (usize,u
 
     // println!("tore après : {:?}", tore);
 
-    *mc = mass_center(tore.clone(), k.len());
+    *neigh_sum = tore.clone();
 
-    growth(f, tore, dt);
+    growth(f, tore, dt, mu, sigma);
     let s4 = SystemTime::now();
 
     let d1 = s2.duration_since(s1).unwrap();
@@ -161,7 +180,7 @@ pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, mc: &mut (usize,u
 }
 
 
-pub fn sdl_main() {
+pub fn sdl_main(mode: Mode) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -177,20 +196,46 @@ pub fn sdl_main() {
     canvas.clear();
     canvas.present();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut i = 0;
+    let _i = 0;
     //let mut monte = true;
     
-    let mut f = Field::new_field(150,100,1);
+    let l = 100;
+    let h = 100;
+    
+    let mut f = Field::new_field(l,h,1);
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
     // f.add(Motif::Rand, 35, 35);
     f.add(Motif::Orbium, 10, 10);
 
-    let k_h = 25;
-    let k = kernel_init(Kernel::Ring, k_h);
+    let k;
+    let mut p = Param {
+        mu: 0.15,
+        sigma: 0.017,
+        nb_bump: 3,
+        gr: 25,
+        r: 0.,
+        a: vec![],
+        w: vec![],
+        b: vec![],
+    };
+        
 
-    f.k_size = k_h;
+    match mode {
+        Mode::Classic => {
+            let k_h = 25;
+            k = kernel_init(Kernel::Ring(k_h));
+            f.k_size = k_h;
+            (p.mu, p.sigma) = (0.15, 0.017);
+        },
+        Mode::Learning => {
+            random_param(& mut p);
+            k = kernel_init(Kernel::Bumpy(&p));
+            f.k_size = 2*p.gr;
+        }
+    }
+
 
     let mut drag = false;
 
@@ -211,12 +256,16 @@ pub fn sdl_main() {
     let mut save_compt = 1;
 
     let mut ev = true;
-    let mut mc = (0,0);
+    let mut neigh_sum = vec![]; 
+
+    let mut bary = false;
+
+    // println!("mu: {}, sigma: {}\n", p.mu, p.sigma);
 
     let start = SystemTime::now();
 
     display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
-    display_scale(&mut canvas,(pixel_size as usize)*100, 50, x_curent + pixel_size*100 + 20,y_curent);
+    // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
 
     write_field("storage/save/init.txt", f.m[0].clone());
 
@@ -246,15 +295,20 @@ pub fn sdl_main() {
         // println!("frame n°{}\n", compt);
 
         if ev {
-            evolve_1chan(&mut f, &k, 1.0/frames as f64, &mut mc);
+            evolve_1chan(&mut f, &k, 1.0/frames as f64, &mut neigh_sum, p.mu, p.sigma);
         }
         
-        display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
-        display_scale(&mut canvas,(pixel_size as usize)*100, 50, x_curent + pixel_size*100 + 20,y_curent);
+        display_field(&f, &mut canvas, x_curent, y_curent, pixel_size);
+        // display_tore(&neigh_sum, &mut canvas, x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
+        // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
+        
+        if bary {
+            let mc = mass_center(&f);
 
-        // canvas.set_draw_color(Color::RGB(218,63,2));
-        // let r = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
-        // let _ = canvas.fill_rect(r);
+            canvas.set_draw_color(Color::RGB(218,63,2));
+            let r = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r);
+        }
 
         //println!("the display took {:?}\n", duration);
         
@@ -322,6 +376,9 @@ pub fn sdl_main() {
                 },
                 Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
                     ev = !ev;
+                },
+                Event::KeyDown { keycode: Some(Keycode::M), .. } => {
+                    bary = !bary;
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left,.. } => {
                     if !drag {

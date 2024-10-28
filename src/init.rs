@@ -3,6 +3,7 @@ use rand::prelude::*;
 use crate::convolution::*;
 use crate::growth::*;
 use crate::file::*;
+use crate::imgep::*;
 
 pub struct Field {
     pub t: f64,
@@ -13,8 +14,9 @@ pub struct Field {
     pub m: Vec<Vec<Vec<f64>>>,
 }
 
-pub enum Kernel {
-    Ring
+pub enum Kernel<'a> {
+    Ring(usize),
+    Bumpy(& 'a Param),
 }
 
 pub enum Motif {
@@ -127,9 +129,9 @@ fn random_square(n: usize) -> Vec<Vec<f64>>{
     let mut rng = rand::thread_rng();
 
     let mut result: Vec<Vec<f64>> = Vec::with_capacity(n);
-    for i in 0..n{
+    for _i in 0..n{
         let mut ligne: Vec<f64> = Vec::with_capacity(n);
-        for j in 0..n{
+        for _j in 0..n{
            ligne.push(rng.gen::<f64>());
         }
         result.push(ligne);
@@ -137,10 +139,13 @@ fn random_square(n: usize) -> Vec<Vec<f64>>{
     result
 }
 
-pub fn kernel_init(k_type: Kernel, h: usize) -> Vec<Vec<f64>>{
+pub fn kernel_init(k_type: Kernel) -> Vec<Vec<f64>>{
     match k_type{
-        Kernel::Ring => {
+        Kernel::Ring(h) => {
             return ring_kernel(h)
+        }
+        Kernel::Bumpy(p) => {
+            return bumpy_kernel(&p);
         }
     }
 }
@@ -189,6 +194,46 @@ fn ring_kernel(h: usize) -> Vec<Vec<f64>>{
     
     println!("{}\n", sum);
      */
+
+    result
+}
+
+fn bumpy_kernel(p: &Param) -> Vec<Vec<f64>>{
+    let h = 2*p.gr;
+    let mut result = vec![vec![0.0 ; h]; h];
+
+
+    let mut sum = 0.0;
+    
+    for x in 0..h {
+        for y in 0..h {
+            let dx;
+            let dy;
+            if x > p.gr { dx =  x-p.gr}
+            else { dx = p.gr-x}
+            if y > p.gr { dy =  y-p.gr}
+            else { dy = p.gr-y}
+
+            let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r*(p.gr as f64));
+            // println!("{}", distance);
+            for i in 0..p.nb_bump{
+                let d_gauss = p.b[i]*gaussian(p.a[i],p.w[i],distance);
+                // println!("{}", d_gauss);
+                sum += d_gauss;
+                result[x][y] += d_gauss;
+            }
+        }
+    }
+    // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
+    
+
+    
+    for i in 0..h{
+        for j in 0..h{
+            result[i][j] /= sum;
+        }
+    }
+
 
     result
 }
