@@ -138,7 +138,7 @@ pub fn file_test(){
 
 fn main() {
     // kernel_test(Kernel::Ring, 13);
-    sdl_main(Mode::Learning);
+    sdl_main(Mode::Classic);
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)

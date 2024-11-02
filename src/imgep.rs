@@ -64,6 +64,37 @@ pub fn mass_center(f: &Field) -> (usize,usize){
     (sumx as usize, sumy as usize)
 }
 
+fn column_sum(f: &Field, y: usize) -> f64{
+    let mut res = 0.;
+    for i in 0..f.h{
+        res += f.m[0][i][y];
+    }
+    res
+}
+
+
+pub fn position(f: &Field) -> ((usize,usize), (usize, usize)){
+    let (x,y) = mass_center(f);
+    
+    let mut dist = [0; 4];
+
+    //up
+    // while f.m[0][x][(y-dist[0])%f.h] != 0.{ dist[0] += 1}
+    while column_sum(&f,(y-dist[0])%f.l) != 0.{ dist[0] += 1}
+    //down
+    // while f.m[0][x][(y+dist[1])%f.h] != 0.{ dist[1] += 1}
+    while column_sum(&f,(y+dist[1])%f.l) != 0. { dist[1] += 1}
+    //left
+    // while f.m[0][(x-dist[2])%f.l][y] != 0.{ dist[2] += 1}
+    while f.m[0][(x-dist[2])%f.h].iter().sum::<f64>() != 0.{ dist[2] += 1}
+    //right
+    // while f.m[0][(x+dist[3])%f.l][y] != 0.{ dist[3] += 1}
+    while f.m[0][(x+dist[3])%f.h].iter().sum::<f64>() != 0.{ dist[3] += 1}
+
+    (((x-dist[2])%f.h+1, (y-dist[0])%f.l+1), (dist[2]+dist[3]-1,dist[0]+dist[1]-1))
+}
+
+
 pub fn random_param(p: & mut Param){
     let mut rng = rand::thread_rng();
     

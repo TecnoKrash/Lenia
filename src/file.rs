@@ -4,6 +4,9 @@ use std::fs;
 // use bytes::{BytesMut, BufMut};
 use std::convert::TryInto;
 
+use crate::init::*;
+use crate::imgep::*;
+
 fn demo<T, const N: usize>(v: Vec<T>) -> [T; N] {
     v.try_into()
         .unwrap_or_else(|v: Vec<T>| panic!("Expected a Vec of length {} but it was {}", N, v.len()))
@@ -172,6 +175,25 @@ pub fn reduction(f: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
 
 
     return result;
+}
+
+pub fn better_reduction(f: &Field) -> Vec<Vec<f64>>{
+
+    let ((x,y),(h,l)) = position(&f);
+    // println!("x: {}, y: {}, h: {}, l: {}", x, y, h, l);
+
+    let mut res = Vec::with_capacity(h);
+    for i in x..x+h{
+        let mut ligne = Vec::with_capacity(l);
+        for j in y..y+l{
+            ligne.push(f.m[0][i][j]);
+        }
+        res.push(ligne);
+    }
+
+    // println!("res: {:?}", res);
+
+    res
 }
 
 pub fn save_data(){

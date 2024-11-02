@@ -286,7 +286,8 @@ pub fn sdl_main(mode: Mode) {
         }
         // canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
         canvas.set_draw_color(Color::RGB(255,0,0));
-        let r = Rect::new(400,300, 100, 100);
+        let r = Rect::new(400,300, 100, 
+        100);
         let _ = canvas.fill_rect(r);
         canvas.set_draw_color(Color::RGB(0,0,255));
         let _ = canvas.draw_rect(r);
@@ -305,9 +306,20 @@ pub fn sdl_main(mode: Mode) {
         if bary {
             let mc = mass_center(&f);
 
+            let ((xc,yc),(hc,lc)) = position(&f);
+
             canvas.set_draw_color(Color::RGB(218,63,2));
-            let r = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
-            let _ = canvas.fill_rect(r);
+            let r1 = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r1);
+
+            canvas.set_draw_color(Color::RGB(218,63,2));
+            let r2 = Rect::new(x_curent+ (xc as i32)*pixel_size, y_curent + (yc as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r2);
+
+            canvas.set_draw_color(Color::RGB(218,63,2));
+            let r3 = Rect::new(x_curent + ((xc + lc) as i32)*pixel_size, y_curent + ((yc + hc) as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let _ = canvas.fill_rect(r3);
+
         }
 
         //println!("the display took {:?}\n", duration);
@@ -369,7 +381,7 @@ pub fn sdl_main(mode: Mode) {
                     save_compt += 1;
                 },
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => {
-                    let red = reduction(f.m[0].clone());
+                    let red = better_reduction(&f);
                     let name = format!("storage/save/r_{}.txt",save_compt);
                     write_field(&name, red);
                     save_compt += 1;
