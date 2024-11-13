@@ -103,90 +103,92 @@ pub fn read_field(name: &str) -> Vec<Vec<f64>> {
     return res;
 }
 
-pub fn co_calculation(b: (bool,bool), f: Vec<Vec<f64>>) -> (usize,usize,usize,usize){
+// pub fn co_calculation(){
 
-    let mut co = (f.len()*(1 - b.0 as usize), f.len()*(b.1 as usize), f[0].len(), 0);
+    // let mut co = (f.len()*(1 - b.0 as usize), f.len()*(b.1 as usize), f[0].len(), 0);
 
-    let mut max_white_y = 0;
+    // let mut max_white_y = 0;
 
-    let mut co_white_y = (0,0,0,0);
+    // let mut co_white_y = (0,0,0,0);
 
-    for i in 0..f.len(){
-        for j in 0..f[0].len(){
-            if f[i][j] != 0.0{
+    // for i in 0..f.len(){
+    //     for j in 0..f[0].len(){
+    //         if f[i][j] != 0.0{
 
-                if (co.2 > j)&&!b.1{
-                    co.2 = j;
-                }
+    //             if (co.2 > j)&&!b.1{
+    //                 co.2 = j;
+    //             }
 
-                if (co.3 <= j)&&!b.1{
-                    co.3  = j+1;
-                }
+    //             if (co.3 <= j)&&!b.1{
+    //                 co.3  = j+1;
+    //             }
 
-                if (co.0 == f.len())&&!b.0 {
-                    co.0 = i
-                }
+    //             if (co.0 == f.len())&&!b.0 {
+    //                 co.0 = i
+    //             }
 
-                if !b.0 {co.1 = i+1;}
-            }
+    //             if !b.0 {co.1 = i+1;}
+    //         }
 
-            // if f[i][j] == 0.0{
+    //         // if f[i][j] == 0.0{
 
-        }
-    }
-    co
-}
+    //     }
+    // }
+    // co
+// }
 
-pub fn reduction(f: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+// pub fn reduction(f: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+// 
+//     let mut b = (false, false);
+// 
+//     let mut redo = false;
+//     
+//     let mut co = co_calculation(b,f.clone());
+// 
+//     if (co.0 == 0)&&(co.1 == f.len()){
+//         b.0 = true;
+//         redo = true;
+//     }
+//     if (co.2 == 0)&&(co.3 == f[0].len()){
+//         b.1 = true;
+//         redo = true;
+//     }
+// 
+//     println!("co0 : {}, co1 : {}", co.0, co.1);
+//     println!("co2 : {}, co3 : {}", co.2, co.3);
+//     println!("b0 : {}, b2 : {}", b.0, b.1);
+// 
+//     if redo {co = co_calculation(b,f.clone());}
+// 
+//     println!("co0 : {}, co1 : {}", co.0, co.1);
+//     println!("co2 : {}, co3 : {}", co.2, co.3);
+// 
+//     let mut result = Vec::with_capacity(co.1-co.0);
+//     
+//     for i in co.0..co.1{
+//         let mut line = Vec::with_capacity(co.3-co.2);
+//         for j in co.2..co.3{
+//             line.push(f[i%f.len()][j%f[0].len()]);
+//         }
+//         result.push(line);
+//     }
+// 
+// 
+//     return result;
+// }
 
-    let mut b = (false, false);
+pub fn better_reduction(f: &Field, pos: ((usize, usize), (usize, usize))) -> Vec<Vec<f64>>{
 
-    let mut redo = false;
-    
-    let mut co = co_calculation(b,f.clone());
+    // let mc = mass_center(&f);
 
-    if (co.0 == 0)&&(co.1 == f.len()){
-        b.0 = true;
-        redo = true;
-    }
-    if (co.2 == 0)&&(co.3 == f[0].len()){
-        b.1 = true;
-        redo = true;
-    }
-
-    println!("co0 : {}, co1 : {}", co.0, co.1);
-    println!("co2 : {}, co3 : {}", co.2, co.3);
-    println!("b0 : {}, b2 : {}", b.0, b.1);
-
-    if redo {co = co_calculation(b,f.clone());}
-
-    println!("co0 : {}, co1 : {}", co.0, co.1);
-    println!("co2 : {}, co3 : {}", co.2, co.3);
-
-    let mut result = Vec::with_capacity(co.1-co.0);
-    
-    for i in co.0..co.1{
-        let mut line = Vec::with_capacity(co.3-co.2);
-        for j in co.2..co.3{
-            line.push(f[i%f.len()][j%f[0].len()]);
-        }
-        result.push(line);
-    }
-
-
-    return result;
-}
-
-pub fn better_reduction(f: &Field) -> Vec<Vec<f64>>{
-
-    let ((x,y),(h,l)) = position(&f);
+    let ((x,y),(h,l)) = pos;
     // println!("x: {}, y: {}, h: {}, l: {}", x, y, h, l);
 
     let mut res = Vec::with_capacity(h);
     for i in x..x+h{
         let mut ligne = Vec::with_capacity(l);
         for j in y..y+l{
-            ligne.push(f.m[0][i][j]);
+            ligne.push(f.m[0][i%f.h][j%f.l]);
         }
         res.push(ligne);
     }

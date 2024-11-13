@@ -73,10 +73,10 @@ fn column_sum(f: &Field, y: usize) -> f64{
 }
 
 
-pub fn position(f: &Field, (x,y): (usize,usize)) -> ((usize,usize), (usize, usize)){
+pub fn position(f: &Field) -> ((usize,usize), (usize, usize)){
+    let (x,y) = mass_center(f);
+    
     let mut dist = [0; 4];
-
-    // println!("x: {}, y : {}\n", x, y);
 
     //up
     // while f.m[0][x][(y-dist[0])%f.h] != 0.{ dist[0] += 1}
@@ -112,20 +112,3 @@ pub fn random_param(p: & mut Param){
         p.w.push(rng.gen::<f64>()*(0.5 - 0.01) + 0.01);
     }
 }
-/*
-pub fn goal_sample(goal_lib: &Vec<Vec<f64>>){
-    let rng = rand::thread_rng();
-    let mut close = 0;
-    let mut very_close = 0;
-
-    let mut target_goal: (f64, f64);
-
-    while close < 1 && very_close > 2{
-        let choix = rng.gen::<f64>();
-
-        if choix < 0.2 {
-            let id_best;
-            target_goal.0 = 
-
-
-*/

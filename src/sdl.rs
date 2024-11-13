@@ -199,8 +199,8 @@ pub fn sdl_main(mode: Mode) {
     let _i = 0;
     //let mut monte = true;
     
-    let l = 100;
-    let h = 100;
+    let l = 50;
+    let h = 50;
     
     let mut f = Field::new_field(l,h,1);
     // f.fill_deg(0,0.0,1.0); 
@@ -259,6 +259,8 @@ pub fn sdl_main(mode: Mode) {
     let mut neigh_sum = vec![]; 
 
     let mut bary = false;
+    let mut mc = mass_center(&f);
+    println!("mc: {:?}\n", mc);
 
     // println!("mu: {}, sigma: {}\n", p.mu, p.sigma);
 
@@ -303,21 +305,27 @@ pub fn sdl_main(mode: Mode) {
         // display_tore(&neigh_sum, &mut canvas, x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
         // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
         
+        let pos = position(&f, mc);
+        let ((xc,yc),(hc,lc)) = pos;
+
+        let mut  c = Field::new_field(hc, lc, 1);
+        c.m[0] = better_reduction(&f, pos);
+
+        mc = mass_center(&c);
+        mc.0 += xc;
+        mc.1 += yc;
+
         if bary {
-            let mc = mass_center(&f);
-
-            let ((xc,yc),(hc,lc)) = position(&f);
-
             canvas.set_draw_color(Color::RGB(218,63,2));
-            let r1 = Rect::new(x_curent+ (mc.0 as i32)*pixel_size, y_curent + (mc.1 as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let r1 = Rect::new(x_curent+ ((mc.0%f.h) as i32)*pixel_size, y_curent + ((mc.1%f.l) as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
             let _ = canvas.fill_rect(r1);
 
             canvas.set_draw_color(Color::RGB(218,63,2));
-            let r2 = Rect::new(x_curent+ (xc as i32)*pixel_size, y_curent + (yc as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let r2 = Rect::new(x_curent+ ((xc%f.h) as i32)*pixel_size, y_curent + ((yc%f.l) as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
             let _ = canvas.fill_rect(r2);
 
             canvas.set_draw_color(Color::RGB(218,63,2));
-            let r3 = Rect::new(x_curent + ((xc + lc) as i32)*pixel_size, y_curent + ((yc + hc) as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
+            let r3 = Rect::new(x_curent + (((xc + lc)%f.h) as i32)*pixel_size, y_curent + (((yc + hc)%f.l) as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
             let _ = canvas.fill_rect(r3);
 
         }
@@ -381,7 +389,7 @@ pub fn sdl_main(mode: Mode) {
                     save_compt += 1;
                 },
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => {
-                    let red = better_reduction(&f);
+                    let red = better_reduction(&f, pos);
                     let name = format!("storage/save/r_{}.txt",save_compt);
                     write_field(&name, red);
                     save_compt += 1;
