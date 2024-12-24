@@ -112,20 +112,57 @@ pub fn random_param(p: & mut Param){
         p.w.push(rng.gen::<f64>()*(0.5 - 0.01) + 0.01);
     }
 }
-/*
-pub fn goal_sample(goal_lib: &Vec<Vec<f64>>){
-    let rng = rand::thread_rng();
-    let mut close = 0;
-    let mut very_close = 0;
 
-    let mut target_goal: (f64, f64);
+pub fn single_ring(p: & mut Param){
+    
+    p.gr = 25/2;
+    p.r = 1.0;
+
+    p.nb_bump = 1;
+
+    p.a.push(0.5);
+    p.w.push(0.15);
+    p.b.push(1.0);
+
+}
+
+pub fn triple_kernel(p: & mut Param){
+
+    p.r = 1.0;
+
+    p.nb_bump = 3;
+
+    p.a = vec![1.0/3.0,2.0/3.0,1.0];
+    p.w = vec![0.15,0.15,0.15];
+    p.b = vec![0.5, 1.0, 0.677];
+
+}
+
+pub fn goal_sample(goal_lib: &Vec<Vec<f64>>, dist: &Vec<f64>){
+    let mut rng = rand::thread_rng();
+    let close = 0;
+    let very_close = 0;
+
+    let mut target_goal: (f64, f64) = (0.1,0.2);
 
     while close < 1 && very_close > 2{
         let choix = rng.gen::<f64>();
 
         if choix < 0.2 {
-            let id_best;
-            target_goal.0 = 
+            let id_best: usize = 42;
+            target_goal.0 = dist[id_best] + (rng.gen::<f64>()*0.45 - 0.22)/4.0;
+            target_goal.1 = dist[id_best] + (rng.gen::<f64>()*0.45 - 0.22)/4.0;
+        }
+        else{
+            if choix < 0.7{
+                target_goal.0 = (rng.gen::<f64>()*0.45 - 0.22)/4.0;
+                target_goal.1 = (rng.gen::<f64>()*0.45 - 0.22)/4.0;
+                
+            }
+        }
+    }
+}
 
 
-*/
+
+

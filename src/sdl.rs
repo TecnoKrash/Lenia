@@ -22,9 +22,11 @@ use crate::growth::*;
 use crate::file::*;
 use crate::imgep::*;
 
+#[derive(Clone)]
 pub enum Mode{
     Learning,
     Classic,
+    Chan3,
 }
 
 pub fn diff(a: u8, b: u8) -> u8{
@@ -34,46 +36,58 @@ pub fn diff(a: u8, b: u8) -> u8{
     b - a
 }
 
-pub fn found_color(val: f64, _chan: usize) -> (u8,u8,u8){
+pub fn found_color(val: f64, chan: usize, mode: Mode) -> (u8,u8,u8){
     //let dgd: [(u8,u8,u8); 11] = [(255,255,255), (255,204,204), (255, 204, 153), (255, 255, 102), (153, 255, 51), (0,255, 0), (0, 204, 102), (0, 153, 153), (0, 51, 102), (0, 0, 51), (0, 0, 0)];
     //let dgd: [(u8,u8,u8); 11] = [(255,255,255), (255,255,204), (204, 255, 153), (178, 255, 102), (51, 255, 51), (0,255, 0), (0, 204, 102), (0, 153, 76), (0, 102, 102), (0, 51, 51), (0, 0, 0)];
-    let dgd: [(u8,u8,u8); 11] = [(255,255,255), (229,255,204), (153, 255, 153), (102, 255, 102), (51, 255, 153), (0,255, 128), (0, 204, 204), (0, 153, 153), (0, 51, 102), (0, 25, 51), (0, 0, 0)];
     let mut res = (0,0,0);
-    if val == 1.0 {return (0,0,0);}
-    let i = (val*10.0) as usize;
-    let a = dgd[i];
-    let b = dgd[i+1];
-    let v2 = val*10.0 - i as f64;
-    if a.0 > b.0{ 
-        res.0 = a.0 - ((diff(a.0,b.0) as f64)*v2) as u8;
+    match mode {
+        Mode::Classic | Mode::Learning => {
+            let dgd: [(u8,u8,u8); 11] = [(255,255,255), (229,255,204), (153, 255, 153), (102, 255, 102), (51, 255, 153), (0,255, 128), (0, 204, 204), (0, 153, 153), (0, 51, 102), (0, 25, 51), (0, 0, 0)]; // One Channel
+            if val == 1.0 {return (0,0,0);}
+            let i = (val*10.0) as usize;
+            let a = dgd[i];
+            let b = dgd[i+1];
+            let v2 = val*10.0 - i as f64;
+            if a.0 > b.0{ 
+                res.0 = a.0 - ((diff(a.0,b.0) as f64)*v2) as u8;
+            }
+            else {
+                res.0 = a.0 + ((diff(a.0,b.0) as f64)*v2) as u8;
+            }
+            if a.1 > b.1{ 
+                res.1 = a.1 - ((diff(a.1,b.1) as f64)*v2) as u8;
+            }
+            else {
+                res.1 = a.1 + ((diff(a.1,b.1) as f64)*v2) as u8;
+            }
+            if a.2 > b.2{ 
+                res.2 = a.2 - ((diff(a.2,b.2) as f64)*v2) as u8;
+            }
+            else {
+                res.2 = a.2 + ((diff(a.2,b.2) as f64)*v2) as u8;
+            }
+            res
+        },
+        Mode::Chan3 => {
+            if chan == 1 { res.0 = ((255 as f64)*val) as u8; }
+            if chan == 2 { res.1 = ((255 as f64)*val) as u8; }
+            if chan == 3 { res.2 = ((255 as f64)*val) as u8; }
+            res
+        }
     }
-    else {
-        res.0 = a.0 + ((diff(a.0,b.0) as f64)*v2) as u8;
-    }
-    if a.1 > b.1{ 
-        res.1 = a.1 - ((diff(a.1,b.1) as f64)*v2) as u8;
-    }
-    else {
-        res.1 = a.1 + ((diff(a.1,b.1) as f64)*v2) as u8;
-    }
-    if a.2 > b.2{ 
-        res.2 = a.2 - ((diff(a.2,b.2) as f64)*v2) as u8;
-    }
-    else {
-        res.2 = a.2 + ((diff(a.2,b.2) as f64)*v2) as u8;
-    }
-    res
+
+
 }
 
 
 
-pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
+pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, mode: &Mode, x_start: i32, y_start: i32, pixel_size: i32){
     for x in 0..f.h{
         for y in 0..f.l{
             let mut col_t = (0,0,0);
             for i in 0..f.nb_channels{
                 let val = &f.get_xy(x, y, i);
-                let f =  found_color(*val, i);
+                let f = found_color(*val, i, mode.clone());
                 col_t.0 += f.0;
                 col_t.1 += f.1;
                 col_t.2 += f.2;
@@ -100,12 +114,12 @@ pub fn display_kernel(k: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i
     }
 }
 
-pub fn display_tore(f: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
+pub fn display_tore(f: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, mode: Mode, x_start: i32, y_start: i32, pixel_size: i32){
     for x in 0..f.len(){
         for y in 0..f[0].len(){
             let mut col_t = (0,0,0);
             let val = &f[x][y];
-            let f =  found_color(*val, 0);
+            let f =  found_color(*val, 0, mode.clone());
             col_t.0 += f.0;
             col_t.1 += f.1;
             col_t.2 += f.2;
@@ -118,10 +132,10 @@ pub fn display_tore(f: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i32
 }
 
 
-pub fn display_scale(canvas: &mut Canvas<Window>, h: usize, l: usize, x: i32, y: i32){
+pub fn display_scale(canvas: &mut Canvas<Window>, mode: Mode, h: usize, l: usize, x: i32, y: i32){
     for i in 0..h{
         let val = (i as f64)/(h as f64);
-        let col_t = found_color(val, i);
+        let col_t = found_color(val, i, mode.clone());
         canvas.set_draw_color(Color::RGB(col_t.0,col_t.1,col_t.2));
         let r = Rect::new(x, ((y as usize) + h - i).try_into().unwrap(), l.try_into().unwrap(), 0);
         let _ = canvas.fill_rect(r);
@@ -199,15 +213,15 @@ pub fn sdl_main(mode: Mode) {
     let _i = 0;
     //let mut monte = true;
     
-    let l = 50;
-    let h = 50;
+    let l = 100;
+    let h = 100;
     
     let mut f = Field::new_field(l,h,1);
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
     // f.add(Motif::Rand, 35, 35);
-    f.add(Motif::Orbium, 10, 10);
+    f.add(Motif::Agent(Agent::Orbium), 10, 10);
 
     let k;
     let mut p = Param {
@@ -224,17 +238,38 @@ pub fn sdl_main(mode: Mode) {
 
     match mode {
         Mode::Classic => {
+            /* 
             let k_h = 25;
-            k = kernel_init(Kernel::Ring(k_h));
+            k = kernel_init(Kernel::Ring1(k_h));
             f.k_size = k_h;
             (p.mu, p.sigma) = (0.15, 0.017);
+            */
+
+            single_ring(& mut p);
+            k = kernel_init(Kernel::Bumpy(&p));
+            f.k_size = 2*p.gr;
         },
         Mode::Learning => {
             random_param(& mut p);
             k = kernel_init(Kernel::Bumpy(&p));
             f.k_size = 2*p.gr;
         }
+        Mode::Chan3 => {
+            /*
+            let k_h1 = 25;
+            let k_h2 = 25;
+            k = kernel_init(Kernel::Ring2(k_h1, k_h2));
+            f.k_size = k_h2;
+            (p.mu, p.sigma) = (0.15, 0.017);
+            */
+
+            triple_kernel(& mut p);
+            k = kernel_init(Kernel::Bumpy(&p));
+            f.k_size = 2*p.gr;
+        }
     }
+
+
 
 
     let mut drag = false;
@@ -266,7 +301,7 @@ pub fn sdl_main(mode: Mode) {
 
     let start = SystemTime::now();
 
-    display_field(&f,&mut canvas,x_curent,y_curent,pixel_size);
+    // display_field(&f,&mut canvas, &mode, x_curent,y_curent,pixel_size);
     // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
 
     write_field("storage/save/init.txt", f.m[0].clone());
@@ -301,19 +336,22 @@ pub fn sdl_main(mode: Mode) {
             evolve_1chan(&mut f, &k, 1.0/frames as f64, &mut neigh_sum, p.mu, p.sigma);
         }
         
-        display_field(&f, &mut canvas, x_curent, y_curent, pixel_size);
-        // display_tore(&neigh_sum, &mut canvas, x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
+        // display_field(&f, &mut canvas, &mode, x_curent, y_curent, pixel_size);
+        // display_tore(&neigh_sum, &mut canvas, mode.clone(), x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
         // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
         
+
         let pos = position(&f, mc);
         let ((xc,yc),(hc,lc)) = pos;
-
+        
         let mut  c = Field::new_field(hc, lc, 1);
         c.m[0] = better_reduction(&f, pos);
 
         mc = mass_center(&c);
         mc.0 += xc;
         mc.1 += yc;
+
+    
 
         if bary {
             canvas.set_draw_color(Color::RGB(218,63,2));
@@ -329,10 +367,11 @@ pub fn sdl_main(mode: Mode) {
             let _ = canvas.fill_rect(r3);
 
         }
+        
 
         //println!("the display took {:?}\n", duration);
         
-        // display_kernel(&k, &mut canvas,x_curent, y_curent, pixel_size);
+        display_kernel(&k, &mut canvas,x_curent, y_curent, pixel_size);
         
         if drag {
             let x_new = event_pump.mouse_state().x();
@@ -389,6 +428,7 @@ pub fn sdl_main(mode: Mode) {
                     save_compt += 1;
                 },
                 Event::KeyDown { keycode: Some(Keycode::R), .. } => {
+                    let pos = ((0,0),(0,0));
                     let red = better_reduction(&f, pos);
                     let name = format!("storage/save/r_{}.txt",save_compt);
                     write_field(&name, red);

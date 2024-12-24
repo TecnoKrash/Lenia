@@ -119,7 +119,7 @@ pub fn convolution_correction_test(){
 
 pub fn color_test(){
     for i in 0..11{
-        println!("{} : {:?}\n", i, found_color(i as f64/10.0, 0));
+        println!("{} : {:?}\n", i, found_color(i as f64/10.0, 0, Mode::Classic));
     }
 }
 
@@ -138,7 +138,7 @@ pub fn file_test(){
 
 fn main() {
     // kernel_test(Kernel::Ring, 13);
-    sdl_main(Mode::Classic);
+    sdl_main(Mode::Chan3);
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)
