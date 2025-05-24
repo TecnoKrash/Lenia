@@ -38,7 +38,7 @@ pub fn duration_test(){
     }
 
     let start = SystemTime::now(); 
-    let _p = fast_convolution_2d(& mut p1, & mut p2);
+    let _p = fast_convolution(& mut p1, & mut p2);
     let end = SystemTime::now();
     
     let duration = end.duration_since(start).unwrap();
@@ -72,7 +72,7 @@ pub fn convolution_test(n : i32, p: usize, q : usize){
         let mut t = tore_format(&f,&kernel_5);
         print_matrice(&t, "t");
 
-        convolution_3d(&mut t, &kernel_5);
+        convolution_2d(&mut t, &kernel_5);
         print_matrice(&t, "t");
     }
     else {
@@ -80,7 +80,7 @@ pub fn convolution_test(n : i32, p: usize, q : usize){
         let mut t = tore_format(&f,&kernel_3);
         print_matrice(&t, "t");
 
-        convolution_3d(&mut t, &kernel_3);
+        convolution_2d(&mut t, &kernel_3);
         print_matrice(&t, "t");
     }
 
@@ -91,9 +91,9 @@ pub fn convolution_test(n : i32, p: usize, q : usize){
 }
 
 pub fn kernel_test(k_type: Kernel){
-    let kernel = kernel_init(k_type);
+    let (kernel,_) = kernel_init(k_type);
 
-    print_matrice(&kernel, &"Kernel");
+    print_matrice(&kernel[0], &"Kernel");
 }
 
 pub fn gaussian_test(n : usize, mu: f64, sigma: f64){
@@ -111,15 +111,15 @@ pub fn convolution_correction_test(){
     let mut p1b = vec![1.0,2.0,3.0,4.0,5.0];
     let mut p2b = vec![5.0,6.0,7.0,8.0,9.0];
 
-    let c1 = convolution_2d(&mut p1,&mut p2);
-    let c2 = fast_convolution_2d(&mut p1b, &mut p2b);
+    let c1 = convolution(&mut p1,&mut p2);
+    let c2 = fast_convolution(&mut p1b, &mut p2b);
 
     println!("conv_2d : {:?}\nfast_conv_2d : {:?}", c1, c2);
 }
 
 pub fn color_test(){
     for i in 0..11{
-        println!("{} : {:?}\n", i, found_color(i as f64/10.0, 0, Mode::Classic));
+        println!("{} : {:?}\n", i, found_color(i as f64/10.0, 0, Mode::Lenia));
     }
 }
 
@@ -137,8 +137,15 @@ pub fn file_test(){
 
 
 fn main() {
+
+    let set = Settings {
+        mode: Mode::Gol,
+//        motif: Motif::Agent(Agent::Orbium),
+        motif: Motif::Rand(30,30),
+    };
+
     // kernel_test(Kernel::Ring, 13);
-    sdl_main(Mode::Chan3);
+    sdl_main(set);
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)

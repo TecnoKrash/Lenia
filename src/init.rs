@@ -4,6 +4,7 @@ use crate::convolution::*;
 use crate::growth::*;
 use crate::file::*;
 use crate::imgep::*;
+use crate::sdl::*;
 
 pub struct Field {
     pub t: f64,
@@ -18,13 +19,16 @@ pub enum Kernel<'a> {
     Ring1(usize),
     Ring2(usize, usize),
     Bumpy(& 'a Param),
+    Radical(& 'a Param),
 }
 
+#[derive(Clone)]
 pub enum Motif {
     Agent(Agent),
-    Rand,
+    Rand(usize, usize),
 }
 
+#[derive(Clone)]
 pub enum Agent {
     Orbium,
     Hydrogeminium,
@@ -32,14 +36,14 @@ pub enum Agent {
 
 impl Field {
     // A function to create an empty field
-    pub fn new_field(h: usize, l: usize, nb_chan: usize) -> Field {
+    pub fn new_field(h: usize, l: usize, nb_channels: usize) -> Field {
         Field {
             t: 0.0,
             l,
             h,
             k_size: 0,
-            nb_channels: nb_chan,
-            m: vec![vec![vec![0.; l]; h]; nb_chan],
+            nb_channels: nb_channels,
+            m: vec![vec![vec![0.; l]; h]; nb_channels],
         }
     }
 
@@ -83,9 +87,9 @@ impl Field {
         }
     }
 
-    pub fn add(self:&mut Field, motif: Motif, x: usize, y: usize){
+    pub fn add(self:&mut Field, set: &Settings, x: usize, y: usize){
         let m;
-        match motif{
+        match &set.motif{
             Motif::Agent(agent) => {
                 match agent {
                     Agent::Orbium => {
@@ -97,8 +101,9 @@ impl Field {
                 }
 
             },
-            Motif::Rand => {
-                m = random_square(30);
+            Motif::Rand(h, l) => {
+                println!("huh");
+                m = random_square(*h, *l, set.mode.clone());
             }
         }
         
@@ -111,9 +116,8 @@ impl Field {
         }
     }
 
-    
-
 }
+
 
 
 fn orbium() -> Vec<Vec<f64>>{
@@ -193,39 +197,54 @@ fn hydrogeminium() -> Vec<Vec<f64>>{
      [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.07,0.22,0.14,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0].to_vec()]
 }
 
-fn random_square(n: usize) -> Vec<Vec<f64>>{
+fn random_square(h: usize, l: usize, _mode: Mode) -> Vec<Vec<f64>>{
     let mut rng = rand::thread_rng();
 
-    let mut result: Vec<Vec<f64>> = Vec::with_capacity(n);
-    for _i in 0..n{
-        let mut ligne: Vec<f64> = Vec::with_capacity(n);
-        for _j in 0..n{
-           ligne.push(rng.gen::<f64>());
+    let mut result: Vec<Vec<f64>> = Vec::with_capacity(h);
+    for _i in 0..h{
+        let mut ligne: Vec<f64> = Vec::with_capacity(l);
+        for _j in 0..l{
+            let r = rng.gen::<f64>();
+            // println!("{}\n", r);
+
+            /*
+            if mode == Mode::Gol {
+                if 1.0 - r < r - 0.0 { ligne.push(1.0); }
+                else { ligne.push(0.0); }
+            }
+            else { ligne.push(r); }
+            */
+
+            ligne.push(r);
         }
         result.push(ligne);
     }
     result
 }
 
-pub fn kernel_init(k_type: Kernel) -> Vec<Vec<f64>>{
+pub fn kernel_init(k_type: Kernel) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
     match k_type{
         Kernel::Ring1(h) => {
             return ring_kernel1(h)
-        }
+        },
         Kernel::Ring2(h1, h2) => {
             return ring_kernel2(h1, h2)
-        }
+        },
         Kernel::Bumpy(p) => {
             return bumpy_kernel(&p);
+        },
+        Kernel::Radical(p) => {
+            return radical_kernel(&p);
         }
     }
 }
 
 
-fn ring_kernel1(h: usize) -> Vec<Vec<f64>>{
+fn ring_kernel1(h: usize) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
     let mut result = vec![vec![0.0 ; h]; h];
 
     let rayon = h/2;
+    println!("rayon : {}", rayon);
     let mut sum = 0.0;
     
     for x in 0..h{
@@ -246,14 +265,12 @@ fn ring_kernel1(h: usize) -> Vec<Vec<f64>>{
         }
     }
     
-    /*
     for i in 0..h{
         for j in 0..h{
             result[i][j] /= sum;
         }
     }
 
-    */
 
     /*
     
@@ -268,52 +285,101 @@ fn ring_kernel1(h: usize) -> Vec<Vec<f64>>{
     println!("{}\n", sum);
      */
 
-    result
+    (vec![],vec![])
 }
 
 
-fn ring_kernel2(h1: usize, h2: usize) -> Vec<Vec<f64>>{
-    vec![vec![]]
+fn ring_kernel2(_h1: usize, _h2: usize) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
+    (vec![],vec![])
 }
 
-fn bumpy_kernel(p: &Param) -> Vec<Vec<f64>>{
-    let h = 2*p.gr;
-    let mut result = vec![vec![0.0 ; h]; h];
+fn bumpy_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
+    println!("p : {:?}", p);
+    let h = 2*p.gr +1;
+    let mut result = vec![vec![vec![0.0 ; h]; h]; p.nb_kernels];
 
 
-    let mut sum = 0.0;
+    let mut sum = vec![0.0; p.nb_kernels];
     
-    for x in 0..h {
-        for y in 0..h {
-            let dx;
-            let dy;
-            if x > p.gr { dx =  x-p.gr}
-            else { dx = p.gr-x}
-            if y > p.gr { dy =  y-p.gr}
-            else { dy = p.gr-y}
+    for k in 0..p.nb_kernels {
+        for x in 0..h {
+            for y in 0..h {
+                let dx;
+                let dy;
+                if x > p.gr { dx =  x-p.gr}
+                else { dx = p.gr-x}
+                if y > p.gr { dy =  y-p.gr}
+                else { dy = p.gr-y}
 
-            let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r*(p.gr as f64));
-            // println!("{}", distance);
-            for i in 0..p.nb_bump{
-                let d_gauss = p.b[i]*gaussian(p.a[i],p.w[i],distance);
-                // println!("{}", d_gauss);
-                sum += d_gauss;
-                result[x][y] += d_gauss;
+                let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r[k]*(p.gr as f64));
+                // println!("{}", distance);
+                if distance <= 1.0 {
+                    for i in 0..p.nb_bump[k]{
+                        let d_gauss = p.b[k][i]*gaussian(p.a[k][i],p.w[k][i],distance);
+                        // println!("{}", d_gauss);
+                        sum[k] += d_gauss;
+                        result[k][x][y] += d_gauss;
+                    }
+                }
+            }
+        }
+        // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
+
+
+
+        for i in 0..h{
+            for j in 0..h{
+                result[k][i][j] /= sum[k];
             }
         }
     }
-    // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
-    
 
+
+    (result,sum)
+}
+
+fn radical_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
+    println!("p : {:?}", p);
+    let h = 2*p.gr +1;
+    let mut result = vec![vec![vec![0.0 ; h]; h]; p.nb_kernels];
+
+    let mut sum = vec![0.0; p.nb_kernels];
     
-    /*
-    for i in 0..h{
-        for j in 0..h{
-            result[i][j] /= sum;
+    for k in 0..p.nb_kernels {
+        for x in 0..h {
+            for y in 0..h {
+                let dx;
+                let dy;
+                if x > p.gr { dx =  x-p.gr}
+                else { dx = p.gr-x}
+                if y > p.gr { dy =  y-p.gr}
+                else { dy = p.gr-y}
+
+                let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r[k]*(p.gr as f64));
+                // println!("{}", distance);
+                if distance <= 1.0 {
+                    for i in 0..p.nb_bump[k]{
+                        let mut d_gauss = p.b[k][i]*gaussian(p.a[k][i],p.w[k][i],distance);
+                        // println!("{}", d_gauss);
+                        if 1.0 - d_gauss > d_gauss { d_gauss = 0.0; }
+                        else { d_gauss = 1.0; }
+                        sum[k] += d_gauss;
+                        result[k][x][y] += d_gauss;
+                    }
+                }
+            }
+        }
+        // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
+
+
+        for i in 0..h{
+            for j in 0..h{
+                result[k][i][j] /= sum[k];
+            }
         }
     }
-    */
 
 
-    result
+    (result, sum)
 }
+

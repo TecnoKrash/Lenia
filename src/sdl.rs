@@ -10,8 +10,7 @@ use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::mouse::MouseButton;
-use sdl2::mouse::MouseWheelDirection;
-
+// use sdl2::mouse::MouseWheelDirection;
 
 // Other imports
 use std::time::SystemTime;
@@ -22,11 +21,21 @@ use crate::growth::*;
 use crate::file::*;
 use crate::imgep::*;
 
+
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub enum Mode{
     Learning,
-    Classic,
+    Lenia,
+    Smooth,
+    Gol,
     Chan3,
+}
+
+#[derive(Clone)]
+pub struct Settings {
+    pub mode: Mode,
+    pub motif: Motif,
 }
 
 pub fn diff(a: u8, b: u8) -> u8{
@@ -41,7 +50,7 @@ pub fn found_color(val: f64, chan: usize, mode: Mode) -> (u8,u8,u8){
     //let dgd: [(u8,u8,u8); 11] = [(255,255,255), (255,255,204), (204, 255, 153), (178, 255, 102), (51, 255, 51), (0,255, 0), (0, 204, 102), (0, 153, 76), (0, 102, 102), (0, 51, 51), (0, 0, 0)];
     let mut res = (0,0,0);
     match mode {
-        Mode::Classic | Mode::Learning => {
+        Mode::Lenia | Mode::Smooth | Mode::Learning => {
             let dgd: [(u8,u8,u8); 11] = [(255,255,255), (229,255,204), (153, 255, 153), (102, 255, 102), (51, 255, 153), (0,255, 128), (0, 204, 204), (0, 153, 153), (0, 51, 102), (0, 25, 51), (0, 0, 0)]; // One Channel
             if val == 1.0 {return (0,0,0);}
             let i = (val*10.0) as usize;
@@ -73,7 +82,12 @@ pub fn found_color(val: f64, chan: usize, mode: Mode) -> (u8,u8,u8){
             if chan == 2 { res.1 = ((255 as f64)*val) as u8; }
             if chan == 3 { res.2 = ((255 as f64)*val) as u8; }
             res
-        }
+        },
+        Mode::Gol => {
+            if 1.0 - val < val { res = (0,0,0); }
+            else { res = (255,255,255); }
+            res
+        },
     }
 
 
@@ -82,6 +96,9 @@ pub fn found_color(val: f64, chan: usize, mode: Mode) -> (u8,u8,u8){
 
 
 pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, mode: &Mode, x_start: i32, y_start: i32, pixel_size: i32){
+    // println!("f.h : {}, f.m[0].len(): {}", f.h, f.m[0].len());
+    // println!("f.l : {}, f.m[0][0].len(): {}", f.l, f.m[0][0].len());
+    
     for x in 0..f.h{
         for y in 0..f.l{
             let mut col_t = (0,0,0);
@@ -100,13 +117,16 @@ pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, mode: &Mode, x_star
 }
 
 
-pub fn display_kernel(k: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
-    let h = k.len();
+pub fn display_kernel(k: &Vec<Vec<Vec<f64>>>, k_sum: &Vec<f64>, canvas: &mut Canvas<Window>, x_start: i32, y_start: i32, pixel_size: i32){
+    let h = k[0].len();
     for x in 0..h{
         for y in 0..h{
-            //println!("k[{}][{}]\n", x, y);
-            let red = (k[x][y]*255.0) as u8;
-            //println!("{}\n", red);
+            let mut red = 0;
+            for i in 0..k.len(){
+                //println!("k[{}][{}]\n", x, y);
+                red += (k[i][x][y]*255.0*k_sum[i]*(1.0/k.len() as f64)) as u8;
+                //println!("{}\n", red);
+            }
             canvas.set_draw_color(Color::RGB(red,0,0));
             let r = Rect::new(x_start+(x as i32)*pixel_size, y_start + (y as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
             let _ = canvas.fill_rect(r);
@@ -132,7 +152,7 @@ pub fn display_tore(f: &Vec<Vec<f64>>, canvas: &mut Canvas<Window>, mode: Mode, 
 }
 
 
-pub fn display_scale(canvas: &mut Canvas<Window>, mode: Mode, h: usize, l: usize, x: i32, y: i32){
+pub fn display_scale(canvas: &mut Canvas<Window>, mode: &Mode, h: usize, l: usize, x: i32, y: i32){
     for i in 0..h{
         let val = (i as f64)/(h as f64);
         let col_t = found_color(val, i, mode.clone());
@@ -145,6 +165,7 @@ pub fn display_scale(canvas: &mut Canvas<Window>, mode: Mode, h: usize, l: usize
 
 
 pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32, pixel_size: i32) -> (i32,i32,i32){
+    println!("huh");
     let x_decalage = (x_mouse- x_start) / pixel_size;
     let y_decalage = (y_mouse- y_start) / pixel_size;
 
@@ -166,7 +187,70 @@ pub fn zoom(normal: bool, x_start: i32, y_start: i32, x_mouse: i32, y_mouse: i32
     return (new_x,new_y,new_pixel_size)
 }
 
-pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, mu: f64, sigma: f64){
+pub fn upscale(f: &mut Field, k: &mut Vec<Vec<Vec<f64>>>, k_sum: &mut Vec<f64>, p: &mut Param, pixel_size: &mut i32){
+    assert!(((*pixel_size/2)*2) == *pixel_size);
+
+    *pixel_size = *pixel_size/2;
+
+    for i in 0..f.nb_channels{
+        let f_old = f.m[i].clone();
+
+        let h_old = f.h;
+        let l_old = f.l;
+
+        *f = Field::new_field(f.m[0].len()*2, f.m[i][0].len()*2, f.nb_channels);
+
+        // println!("f.h : {}, f.m[0].len(): {}", f.h, f.m[0].len());
+        // println!("f.l : {}, f.m[0][0].len(): {}", f.l, f.m[0][0].len());
+
+        for x in 0..h_old{
+            for y in 0..l_old{
+                f.m[i][2*x][2*y] = f_old[x][y];
+                f.m[i][2*x+1][2*y] = f_old[x][y];
+                f.m[i][2*x][2*y+1] = f_old[x][y];
+                f.m[i][2*x+1][2*y+1] = f_old[x][y];
+            }
+        }
+    }
+    //    println!("test1");
+
+    p.gr = p.gr*2;
+
+    f.k_size = 2*p.gr +1;
+
+    (*k,*k_sum) = kernel_init(Kernel::Bumpy(&p));
+}
+
+pub fn downscale(f: &mut Field, k: &mut Vec<Vec<Vec<f64>>>, k_sum: &mut Vec<f64>, p: &mut Param, pixel_size: &mut i32){
+    assert!((f.h/2)*2 == f.h);
+    assert!((f.l/2)*2 == f.l);
+
+    *pixel_size = *pixel_size*2;
+
+    for i in 0..f.nb_channels{
+        let f_old = f.m[i].clone();
+
+        *f = Field::new_field(f.m[0].len()/2, f.m[i][0].len()/2, f.nb_channels);
+
+        // println!("f.h : {}, f.m[0].len(): {}", f.h, f.m[0].len());
+        // println!("f.l : {}, f.m[0][0].len(): {}", f.l, f.m[0][0].len());
+
+        for x in 0..f.h{
+            for y in 0..f.l{
+                f.m[i][x][y] = (f_old[2*x][2*y] + f_old[2*x+1][2*y] + f_old[2*x][2*y+1] + f_old[2*x+1][2*y+1])/4.0;
+            }
+        }
+    }
+    //    println!("test1");
+
+    p.gr = p.gr/2;
+
+    f.k_size = 2*p.gr +1;
+
+    (*k,*k_sum) = kernel_init(Kernel::Bumpy(&p));
+}
+
+pub fn evolve_1chan(set: &Settings, f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, mu: f64, sigma: f64, bruit: f64){
 
     let s1 = SystemTime::now();
     let mut tore = tore_format(&(f.m[0]),&k);
@@ -174,14 +258,16 @@ pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, neigh_sum: &mut V
 
     // println!("tore avant : {:?}", tore);
 
-    convolution_3d(&mut tore, k);
+    convolution_2d(&mut tore, k);
     let s3 = SystemTime::now();
 
     // println!("tore après : {:?}", tore);
 
     *neigh_sum = tore.clone();
 
-    growth(f, tore, dt, mu, sigma);
+    if set.mode == Mode::Gol { growth_gol(f, tore, dt, mu, sigma);}
+    // else { growth_lenia(f, tore, dt, mu, sigma);}
+    else { growth_lenia_old(f, tore, dt, mu, sigma);}
     let s4 = SystemTime::now();
 
     let d1 = s2.duration_since(s1).unwrap();
@@ -193,8 +279,39 @@ pub fn evolve_1chan(f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, neigh_sum: &mut V
 
 }
 
+pub fn evolve(set: &Settings, f: &mut Field, k: &Vec<Vec<Vec<f64>>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, p: &Param, chan_ratios: &Vec<usize>, bruit: f64){
 
-pub fn sdl_main(mode: Mode) {
+    for i in 0..p.nb_kernels{
+
+        let s1 = SystemTime::now();
+        let mut tore = tore_format(&(f.m[p.c[i].0]),&k[i]);
+        let s2 = SystemTime::now();
+
+        // println!("tore avant : {:?}", tore);
+
+        convolution_2d(&mut tore, &k[i]);
+        let s3 = SystemTime::now();
+
+        // println!("tore après : {:?}", tore);
+
+        *neigh_sum = tore.clone();
+
+        if set.mode == Mode::Gol { growth_gol(f, tore, dt, p.mu[i], p.sigma[i]);}
+        // else { growth_lenia(f, tore, dt, mu, sigma);}
+        else { growth_lenia(f, tore, dt, p.mu[i], p.sigma[i], p.c[i].1, 1.0/(chan_ratios[i] as f64), bruit);}
+        let s4 = SystemTime::now();
+
+        let d1 = s2.duration_since(s1).unwrap();
+        let d2 = s3.duration_since(s2).unwrap();
+        let d3 = s4.duration_since(s3).unwrap();
+
+        // println!("Duration : tore {:?}, conv3D {:?}, growth {:?}\n", d1, d2, d3);
+    }
+
+
+}
+
+pub fn sdl_main(set: Settings) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -213,46 +330,43 @@ pub fn sdl_main(mode: Mode) {
     let _i = 0;
     //let mut monte = true;
     
-    let l = 100;
-    let h = 100;
+    let l = 64;
+    let h = 64;
     
     let mut f = Field::new_field(l,h,1);
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
     // f.add(Motif::Rand, 35, 35);
-    f.add(Motif::Agent(Agent::Orbium), 10, 10);
 
-    let k;
-    let mut p = Param {
-        mu: 0.15,
-        sigma: 0.017,
-        nb_bump: 3,
-        gr: 25,
-        r: 0.,
-        a: vec![],
-        w: vec![],
-        b: vec![],
-    };
+    let mut k;
+    let mut k_sum;
+    let mut p = Param::param_init(&set);
+    let mut chan_ratios = vec![0; f.nb_channels];
+
+    for i in 0..p.nb_kernels{
+        chan_ratios[p.c[i].1] += 1;
+    }
+
+    f.k_size = 2*p.gr +1;
         
-
-    match mode {
-        Mode::Classic => {
-            /* 
+    /*
+    match set.mode {
+        Mode::Lenia => {
+            /*
             let k_h = 25;
-            k = kernel_init(Kernel::Ring1(k_h));
+            k= kernel_init(Kernel::Ring1(k_h));
             f.k_size = k_h;
             (p.mu, p.sigma) = (0.15, 0.017);
             */
+            f.k_size = 2*p.gr+1;
 
-            single_ring(& mut p);
-            k = kernel_init(Kernel::Bumpy(&p));
-            f.k_size = 2*p.gr;
+            // triple_kernel(& mut p);
+            // println!("k1 == k : {}, f.k_size : {}", (k1 == k), f.k_size);
         },
         Mode::Learning => {
             random_param(& mut p);
-            k = kernel_init(Kernel::Bumpy(&p));
-            f.k_size = 2*p.gr;
+            // k = kernel_init(Kernel::Bumpy(&p));
         }
         Mode::Chan3 => {
             /*
@@ -263,9 +377,28 @@ pub fn sdl_main(mode: Mode) {
             (p.mu, p.sigma) = (0.15, 0.017);
             */
 
-            triple_kernel(& mut p);
-            k = kernel_init(Kernel::Bumpy(&p));
-            f.k_size = 2*p.gr;
+            triple_ring(& mut p);
+            // k = kernel_init(Kernel::Bumpy(&p));
+            f.k_size = 2*p.gr +1;
+        }
+    }
+    */
+
+    match set.mode {
+        Mode::Lenia | Mode::Learning | Mode::Chan3 => {
+            (k,k_sum) = kernel_init(Kernel::Bumpy(&p));
+            // println!("{:?}", k);
+        },
+        Mode::Smooth => {
+            (k,k_sum) = kernel_init(Kernel::Radical(&p));
+        },
+        Mode::Gol => {
+            k = vec![vec![vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                          vec![0.0, 1.0/8.5, 1.0/8.5, 1.0/8.5, 0.0],
+                          vec![0.0, 1.0/8.5, 0.5/8.5, 1.0/8.5, 0.0],
+                          vec![0.0, 1.0/8.5, 1.0/8.5, 1.0/8.5, 0.0],
+                          vec![0.0, 0.0, 0.0, 0.0, 0.0],]];
+            k_sum = vec![8.5];
         }
     }
 
@@ -273,6 +406,8 @@ pub fn sdl_main(mode: Mode) {
 
 
     let mut drag = false;
+    let mut add = false;
+    let mut add_wait = false;
 
     let mut zoom_in = false;
     let mut zoom_out = false;
@@ -284,13 +419,22 @@ pub fn sdl_main(mode: Mode) {
     let mut x_mouse = 0;
     let mut y_mouse = 0;
 
-    let mut pixel_size = 10;
+    let mut pixel_size = 8;
 
-    let frames = 12;
+    let mut frames = 15;
+    if set.mode == Mode::Gol { frames = 10 };
+
     
     let mut save_compt = 1;
 
-    let mut ev = true;
+    let mut ev = false;
+    let mut bruit = 0.0;
+
+    let mut show_kernel = false;
+    let mut show_tore = false;
+    let mut show_scale = false;
+
+    let mut one_frame = false;
     let mut neigh_sum = vec![]; 
 
     let mut bary = false;
@@ -299,16 +443,17 @@ pub fn sdl_main(mode: Mode) {
 
     // println!("mu: {}, sigma: {}\n", p.mu, p.sigma);
 
-    let start = SystemTime::now();
+    let _start = SystemTime::now();
 
-    // display_field(&f,&mut canvas, &mode, x_curent,y_curent,pixel_size);
-    // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
+    display_field(&f,&mut canvas, &set.mode, x_curent,y_curent,pixel_size);
+    // display_scale(&mut canvas, &mode,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
 
     write_field("storage/save/init.txt", f.m[0].clone());
 
     // Event l
     'running: loop {
         let start = SystemTime::now();
+
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
         /*
@@ -333,12 +478,23 @@ pub fn sdl_main(mode: Mode) {
         // println!("frame n°{}\n", compt);
 
         if ev {
-            evolve_1chan(&mut f, &k, 1.0/frames as f64, &mut neigh_sum, p.mu, p.sigma);
+            evolve(&set, &mut f, &k, 1.0/frames as f64, &mut neigh_sum, &p, &chan_ratios, bruit);
+        }
+
+        if one_frame {
+            ev = false;
+            one_frame = false;
         }
         
-        // display_field(&f, &mut canvas, &mode, x_curent, y_curent, pixel_size);
-        // display_tore(&neigh_sum, &mut canvas, mode.clone(), x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
-        // display_scale(&mut canvas,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
+        display_field(&f, &mut canvas, &set.mode, x_curent, y_curent, pixel_size);
+
+        if show_tore {
+            display_tore(&neigh_sum, &mut canvas, set.mode.clone(), x_curent + (l as i32)*pixel_size + 20, y_curent ,pixel_size);
+        }
+
+        if show_scale {
+            display_scale(&mut canvas, &set.mode,(pixel_size as usize)*h, 50, x_curent + pixel_size*(l as i32) + 20,y_curent + 100);
+        }
         
 
         let pos = position(&f, mc);
@@ -371,7 +527,9 @@ pub fn sdl_main(mode: Mode) {
 
         //println!("the display took {:?}\n", duration);
         
-        display_kernel(&k, &mut canvas,x_curent, y_curent, pixel_size);
+        if show_kernel {
+            display_kernel(&k, &k_sum, &mut canvas,x_curent, y_curent, pixel_size);
+        }
         
         if drag {
             let x_new = event_pump.mouse_state().x();
@@ -387,6 +545,19 @@ pub fn sdl_main(mode: Mode) {
             }
              
 
+        }
+
+        if add {
+            // println!("current : ({},{})", x_curent, y_curent);
+            // println!("with pixel size : ({},{})", (x_mouse - x_curent)/pixel_size, (y_mouse - y_curent)/pixel_size);
+            let x = ((x_mouse - x_curent)/pixel_size).try_into().unwrap();
+            let y = ((y_mouse - y_curent)/pixel_size).try_into().unwrap();
+
+            // println!("xy : ({},{})", x, y);
+
+            f.add(&set, x, y);
+            // f.add(&set, 7, 1);
+            add = false;
         }
 
         if zoom_in {
@@ -434,11 +605,43 @@ pub fn sdl_main(mode: Mode) {
                     write_field(&name, red);
                     save_compt += 1;
                 },
+                Event::KeyDown { keycode: Some(Keycode::K), .. } => {
+                    show_kernel = !show_kernel;
+                },
+                Event::KeyDown { keycode: Some(Keycode::T), .. } => {
+                    show_tore = !show_tore;
+                },
+                Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                    show_scale = !show_scale;
+                },
                 Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
                     ev = !ev;
                 },
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+                    if ev == false {
+                        ev = true;
+                        one_frame = true;
+                    }
+                },
                 Event::KeyDown { keycode: Some(Keycode::M), .. } => {
                     bary = !bary;
+                },
+                Event::KeyDown { keycode: Some(Keycode::G), .. } => {
+                    bruit += 0.1;
+                    println!("bruit : {}", bruit);
+                },
+                Event::KeyDown { keycode: Some(Keycode::F), .. } => {
+                    bruit -= 0.1;
+                    println!("bruit : {}", bruit);
+                },
+                Event::KeyDown { keycode: Some(Keycode::U), .. } => {
+                    if set.mode != Mode::Gol { upscale(&mut f, &mut k, &mut k_sum, &mut p, &mut pixel_size);}
+                },
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    if set.mode != Mode::Gol { downscale(&mut f, &mut k, &mut k_sum, &mut p, &mut pixel_size);}
+                },
+                Event::KeyDown { keycode: Some(Keycode::Backspace), .. } => {
+                    f.fill(0, 0.0);
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left,.. } => {
                     if !drag {
@@ -446,17 +649,35 @@ pub fn sdl_main(mode: Mode) {
                         drag = true
                     }
                 },
-                Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => { 
-                    drag = false
+                Event::MouseButtonDown { mouse_btn: MouseButton::Right,.. } => {
+                    if !add_wait {
+                        add = true;
+                        add_wait = true;
+                        update_x = true;
+                    }
                 },
-                Event::MouseWheel { direction: MouseWheelDirection::Flipped, ..  } => {
+                Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => { 
+                    drag = false;
+                },
+                Event::MouseButtonUp { mouse_btn: MouseButton::Right, .. } => { 
+                    add_wait = false;
+                },
+                Event::KeyDown { keycode: Some(Keycode::Comma), ..  } => {
+                    println!("{}",true);
                     zoom_out = true;
                     update_x = true;
-                } 
-                Event::MouseWheel { direction: MouseWheelDirection::Normal, ..  } => {
-                    
+                },
+                Event::KeyDown { keycode: Some(Keycode::Semicolon), ..  } => {
                     zoom_in = true;
                     update_x = true;
+                }  
+                Event::KeyDown { keycode: Some(Keycode::Colon), ..  } => {
+                    frames += 1;
+                    println!("frames : {}", frames);
+                }  
+                Event::KeyDown { keycode: Some(Keycode::Exclaim), ..  } => {
+                    frames -= 1;
+                    println!("frames : {}", frames);
                 }  
                 _ => {}
             }
@@ -465,6 +686,7 @@ pub fn sdl_main(mode: Mode) {
         if update_x {
             x_mouse = event_pump.mouse_state().x();
             y_mouse = event_pump.mouse_state().y();
+            // println!("mouse : ({},{})", x_mouse, y_mouse);
         }
         
 
@@ -478,8 +700,10 @@ pub fn sdl_main(mode: Mode) {
         let duration = end.duration_since(start).unwrap();
 
         let f_time = Duration::new(0, 1_000_000_000u32 / frames);
+        let fps = 1_000_000_000f64 /(Duration::as_nanos(&duration) as f64);
 
         if duration < f_time{
+            // println!("fps : {}", fps);
             ::std::thread::sleep(f_time- duration);
         }
     }

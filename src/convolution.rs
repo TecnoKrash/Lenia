@@ -151,7 +151,7 @@ fn c_vec(p: &mut Vec<f64>) -> Vec<C>{
     result
 }
 
-pub fn convolution_2d(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
+pub fn convolution(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
 
     let lp1 = p1.len();
     let lp2 = p2.len();
@@ -206,7 +206,7 @@ fn complex_vec(p: &mut Vec<f64>) -> Vec<Complex<f64>>{
 }
 
 
-pub fn fast_convolution_2d(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
+pub fn fast_convolution(p1: &mut Vec<f64>, p2: &mut Vec<f64>) -> Vec<f64>{
 
 
     let lp1 = p1.len();
@@ -314,7 +314,7 @@ pub fn linearisation(m: & Vec<Vec<f64>>, size: usize) -> Vec<f64>{
 }
 
 
-pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
+pub fn convolution_2d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
 
     let hf = f.len();
     let lf = f[0].len();
@@ -338,7 +338,7 @@ pub fn convolution_3d(f: &mut Vec<Vec<f64>>, kernel: &Vec<Vec<f64>>){
 
 
     let t4 = SystemTime::now();
-    let conv = fast_convolution_2d(&mut t,&mut k);
+    let conv = fast_convolution(&mut t,&mut k);
     let t5 = SystemTime::now();
 
     let  d3 = t5.duration_since(t4).unwrap();
