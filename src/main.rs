@@ -4,6 +4,7 @@ mod sdl;
 mod growth;
 mod file;
 mod imgep;
+mod plot;
 
 use rand::prelude::*;
 use std::time::SystemTime;
@@ -12,6 +13,7 @@ use crate::sdl::*;
 use crate::init::*;
 use crate::growth::*;
 use crate::file::*;
+use crate::plot::*;
 
 pub fn print_matrice(f: &Vec<Vec<f64>>, name: &str){
     println!("{} :", name);
@@ -139,13 +141,20 @@ pub fn file_test(){
 fn main() {
 
     let set = Settings {
-        mode: Mode::Gol,
-//        motif: Motif::Agent(Agent::Orbium),
-        motif: Motif::Rand(30,30),
+        mode: Mode::Lenia,
+        // mode: Mode::Gol,
+        motif: Motif::Agent(Agent::Hydrogeminium),
+        // motif: Motif::Rand(30,30),
     };
 
     // kernel_test(Kernel::Ring, 13);
     sdl_main(set);
+
+
+    let mut rng = rand::thread_rng();
+
+    // println!("{}", (rng.gen::<f64>()*100.0 )as u32);
+    
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)

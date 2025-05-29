@@ -29,22 +29,23 @@ impl Vector {
 
 #[derive(Debug)]
 pub struct Param {
-    pub nb_kernels: usize,
-    pub mu: Vec<f64>,
-    pub sigma: Vec<f64>,
-    pub nb_bump: Vec<usize>,
-    pub gr: usize,
-    pub r: Vec<f64>,
-    pub a: Vec<Vec<f64>>,
-    pub w: Vec<Vec<f64>>,
-    pub b: Vec<Vec<f64>>,
-    pub c: Vec<(usize,usize)>,
+    pub nb_kernels: usize,      // Number of used kernels
+    pub mu: Vec<f64>,           // Gaussian parameter for the growth functions
+    pub sigma: Vec<f64>,        // *
+    pub nb_bump: Vec<usize>,    // Number of rings for each kernels
+    pub gr: usize,              // Global radius of the final kernel
+    pub r: Vec<f64>,            // Proportion of the big radius used by each kernels (r[i]*gr = radius of the i th kernel)
+    pub a: Vec<Vec<f64>>,       // proportion of the specific radius for each bump of every kernels
+    pub w: Vec<Vec<f64>>,       // Width of each bump for every kernels
+    pub b: Vec<Vec<f64>>,       // Hight of each bump for every kernels
+    pub h: Vec<f64>,            // Hight of the growth function for every kernels
+    pub c: Vec<(usize,usize)>,  // input and output channels use by each kernels
 }
 
 impl Param {
     pub fn param_init(set: &Settings) -> Param{
         match set.mode {
-            Mode::Lenia | Mode::Chan3 => {
+            Mode::Lenia =>  {
                 match set.motif {
                     Motif::Agent(Agent::Orbium) => {
                         Param {
@@ -57,6 +58,7 @@ impl Param {
                             a: vec![vec![0.5]],
                             w: vec![vec![0.15]],
                             b: vec![vec![1.0]],
+                            h: vec![1.0],
                             c: vec![(0,0)],
                         }
                     },
@@ -71,10 +73,26 @@ impl Param {
                             a: vec![vec![1.0/6.0,3.0/6.0,5.0/6.0]],
                             w: vec![vec![0.05,0.05,0.05]],
                             b: vec![vec![0.5, 1.0, 0.667]],
+                            h: vec![1.0],
                             c: vec![(0,0)]
                         }
                     },
-                    Motif::Rand(_h, _l) => {
+                    Motif::Agent(Agent::Fish) => {
+                        Param {
+                            nb_kernels: 3,
+                            mu: vec![0.156,0.193,0.342],
+                            sigma: vec![0.0118,0.049,0.0891],
+                            nb_bump: vec![3, 2, 1],
+                            gr: 10,
+                            r: vec![1.0, 1.0, 1.0],
+                            a: vec![vec![1.0/6.0,3.0/6.0,5.0/6.0], vec![1.0/4.0, 3.0/4.0], vec![0.5]],
+                            w: vec![vec![0.05,0.05,0.05], vec![0.10,0.10], vec![0.15]],
+                            b: vec![vec![1.0, 5.0/12.0, 2.0/3.0], vec![1.0/12.0, 1.0], vec![1.0]],
+                            h: vec![1.0, 1.0, 1.0],
+                            c: vec![(0,0), (0,0), (0,0)]
+                        }
+                    },
+                    Motif::Rand(_h, _l) => { 
                         Param {
                             nb_kernels: 1,
                             mu: vec![0.15],
@@ -85,10 +103,42 @@ impl Param {
                             a: vec![vec![0.5]],
                             w: vec![vec![0.15]],
                             b: vec![vec![1.0]],
+                            h: vec![1.0],
+                            c: vec![(0,0)],
+                        }
+                    }
+                    Motif::Agent(Agent::Aquarium) => {
+                        Param {
+                            nb_kernels: 1,
+                            mu: vec![0.15],
+                            sigma: vec![0.017],
+                            nb_bump: vec![1],
+                            gr: 25/2,
+                            r: vec![1.0],
+                            a: vec![vec![0.5]],
+                            w: vec![vec![0.15]],
+                            b: vec![vec![1.0]],
+                            h: vec![1.0],
                             c: vec![(0,0)],
                         }
                     }
 
+
+                }
+            },
+            Mode::Chan3 => {
+                Param {
+                    nb_kernels: 15,
+                    mu: vec![0.272, 0.349, 0.2, 0.114, 0.447, 0.247, 0.21, 0.462, 0.446, 0.327, 0.476, 0.379, 0.262, 0.412, 0.201],
+                    sigma: vec![0.0595, 0.1585, 0.0332, 0.0528, 0.0777, 0.0342, 0.0617, 0.1192, 0.1793, 0.1408, 0.0995, 0.0697, 0.0877, 0.1101, 0.0786],
+                    nb_bump: vec![1, 1, 2, 2, 1, 2, 1, 1, 1, 2, 2, 2, 1, 2, 1],
+                    gr: 12,
+                    r: vec![0.91, 0.62, 0.5, 0.97, 0.72, 0.8, 0.96, 0.56, 0.78, 0.79, 0.5, 0.72, 0.68, 0.82, 0.82],
+                    a: vec![vec![1.0], vec![1.0], vec![1.0/4.0, 3.0/4.0], vec![1.0/4.0, 3.0/4.0], vec![1.0], vec![1.0/4.0, 3.0/4.0], vec![1.0], vec![1.0], vec![1.0], vec![1.0/4.0, 3.0/4.0], vec![1.0/4.0, 3.0/4.0], vec![1.0/4.0, 3.0/4.0], vec![1.0], vec![1.0/4.0, 3.0/4.0], vec![1.0]],
+                    w: vec![vec![0.15], vec![0.15], vec![0.10, 0.10], vec![0.10, 0.10], vec![0.15], vec![0.10, 0.10], vec![0.15], vec![0.15], vec![0.15], vec![0.10, 0.10], vec![0.10, 0.10], vec![0.10, 0.10], vec![0.15], vec![0.10, 0.10], vec![0.15]],
+                    b: vec![vec![1.0], vec![1.0], vec![1.0, 1.0/4.0], vec![0.0, 1.0], vec![1.0], vec![5.0/6.0, 1.0], vec![1.0], vec![1.0], vec![1.0], vec![11.0/12.0, 1.0], vec![3.0/4.0, 1.0], vec![11.0/12.0, 1.0], vec![1.0], vec![1.0/6.0, 1.0], vec![1.0]],
+                    h: vec![0.138, 0.48, 0.284, 0.256, 0.5, 0.622, 0.35, 0.218, 0.556, 0.344, 0.456, 0.67, 0.42, 0.43, 0.278],
+                    c: vec![(0,0), (0,0), (0,0), (1,1), (1,1), (1,1), (2,2), (2,2), (2,2), (0,1), (0,2), (1,0), (1,2), (2,0), (2,1)],
                 }
             },
             Mode::Smooth => {
@@ -102,6 +152,7 @@ impl Param {
                     a: vec![vec![0.5]],
                     w: vec![vec![0.20]],
                     b: vec![vec![1.0]],
+                    h: vec![1.0],
                     c: vec![(0,0)],
                 }
             },
@@ -116,6 +167,7 @@ impl Param {
                     a: vec![],
                     w: vec![],
                     b: vec![],
+                    h: vec![1.0],
                     c: vec![(0,0)],
                 }
             },
@@ -200,6 +252,7 @@ pub fn random_param() -> Param{
                     a: vec![],
                     w: vec![],
                     b: vec![],
+                    h: vec![],
                     c: vec![],
                 };
 
@@ -285,6 +338,23 @@ pub fn goal_sample(goal_lib: &Vec<Vec<f64>>, dist: &Vec<f64>){
         }
     }
 }
+
+kernels = [
+  {"b":[1],"m":0.272,"s":0.0595,"h":0.138,"r":0.91,"c0":0,"c1":0},
+  {"b":[1],"m":0.349,"s":0.1585,"h":0.48,"r":0.62,"c0":0,"c1":0},
+  {"b":[1,1/4],"m":0.2,"s":0.0332,"h":0.284,"r":0.5,"c0":0,"c1":0},
+  {"b":[0,1],"m":0.114,"s":0.0528,"h":0.256,"r":0.97,"c0":1,"c1":1},
+  {"b":[1],"m":0.447,"s":0.0777,"h":0.5,"r":0.72,"c0":1,"c1":1},
+  {"b":[5/6,1],"m":0.247,"s":0.0342,"h":0.622,"r":0.8,"c0":1,"c1":1},
+  {"b":[1],"m":0.21,"s":0.0617,"h":0.35,"r":0.96,"c0":2,"c1":2},
+  {"b":[1],"m":0.462,"s":0.1192,"h":0.218,"r":0.56,"c0":2,"c1":2},
+  {"b":[1],"m":0.446,"s":0.1793,"h":0.556,"r":0.78,"c0":2,"c1":2},
+  {"b":[11/12,1],"m":0.327,"s":0.1408,"h":0.344,"r":0.79,"c0":0,"c1":1},
+  {"b":[3/4,1],"m":0.476,"s":0.0995,"h":0.456,"r":0.5,"c0":0,"c1":2},
+  {"b":[11/12,1],"m":0.379,"s":0.0697,"h":0.67,"r":0.72,"c0":1,"c1":0},
+  {"b":[1],"m":0.262,"s":0.0877,"h":0.42,"r":0.68,"c0":1,"c1":2},
+  {"b":[1/6,1,0],"m":0.412,"s":0.1101,"h":0.43,"r":0.82,"c0":2,"c1":0},
+  {"b":[1],"m":0.201,"s":0.0786,"h":0.278,"r":0.82,"c0":2,"c1":1}]
 
 */
 

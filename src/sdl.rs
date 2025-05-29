@@ -20,6 +20,7 @@ use crate::convolution::*;
 use crate::growth::*;
 use crate::file::*;
 use crate::imgep::*;
+use crate::plot::*;
 
 
 #[derive(Clone)]
@@ -78,9 +79,9 @@ pub fn found_color(val: f64, chan: usize, mode: Mode) -> (u8,u8,u8){
             res
         },
         Mode::Chan3 => {
-            if chan == 1 { res.0 = ((255 as f64)*val) as u8; }
-            if chan == 2 { res.1 = ((255 as f64)*val) as u8; }
-            if chan == 3 { res.2 = ((255 as f64)*val) as u8; }
+            if chan == 0 { res.0 = ((255 as f64)*val) as u8; }
+            if chan == 1 { res.1 = ((255 as f64)*val) as u8; }
+            if chan == 2 { res.2 = ((255 as f64)*val) as u8; }
             res
         },
         Mode::Gol => {
@@ -105,6 +106,7 @@ pub fn display_field(f: &Field, canvas: &mut Canvas<Window>, mode: &Mode, x_star
             for i in 0..f.nb_channels{
                 let val = &f.get_xy(x, y, i);
                 let f = found_color(*val, i, mode.clone());
+                // if *val > 0.0 && i == 2 { println!("val: {}", val); }
                 col_t.0 += f.0;
                 col_t.1 += f.1;
                 col_t.2 += f.2;
@@ -122,12 +124,16 @@ pub fn display_kernel(k: &Vec<Vec<Vec<f64>>>, k_sum: &Vec<f64>, canvas: &mut Can
     for x in 0..h{
         for y in 0..h{
             let mut red = 0;
+            let mut green = 0;
+            let mut blue = 0;
             for i in 0..k.len(){
                 //println!("k[{}][{}]\n", x, y);
-                red += (k[i][x][y]*255.0*k_sum[i]*(1.0/k.len() as f64)) as u8;
+                if i%3 == 0 {red += (k[i][x][y]*255.0*k_sum[i]/*(1.0/k.len() as f64)*/) as u8;}
+                if i%3 == 1 {green += (k[i][x][y]*255.0*k_sum[i]/*(1.0/k.len() as f64)*/) as u8;}
+                if i%3 == 2 {blue += (k[i][x][y]*255.0*k_sum[i]/*(1.0/k.len() as f64)*/) as u8;}
                 //println!("{}\n", red);
             }
-            canvas.set_draw_color(Color::RGB(red,0,0));
+            canvas.set_draw_color(Color::RGB(red,green,blue));
             let r = Rect::new(x_start+(x as i32)*pixel_size, y_start + (y as i32)*pixel_size, pixel_size.try_into().unwrap(), pixel_size.try_into().unwrap());
             let _ = canvas.fill_rect(r);
         }
@@ -279,7 +285,7 @@ pub fn evolve_1chan(set: &Settings, f: &mut Field, k: &Vec<Vec<f64>>, dt: f64, n
 
 }
 
-pub fn evolve(set: &Settings, f: &mut Field, k: &Vec<Vec<Vec<f64>>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, p: &Param, chan_ratios: &Vec<usize>, bruit: f64){
+pub fn evolve(set: &Settings, f: &mut Field, k: &Vec<Vec<Vec<f64>>>, dt: f64, neigh_sum: &mut Vec<Vec<f64>>, p: &Param, chan_ratios: &Vec<usize>, seed: &Seed, bruit: f64){
 
     for i in 0..p.nb_kernels{
 
@@ -298,7 +304,7 @@ pub fn evolve(set: &Settings, f: &mut Field, k: &Vec<Vec<Vec<f64>>>, dt: f64, ne
 
         if set.mode == Mode::Gol { growth_gol(f, tore, dt, p.mu[i], p.sigma[i]);}
         // else { growth_lenia(f, tore, dt, mu, sigma);}
-        else { growth_lenia(f, tore, dt, p.mu[i], p.sigma[i], p.c[i].1, 1.0/(chan_ratios[i] as f64), bruit);}
+        else { growth_lenia(f, tore, dt, p.mu[i], p.sigma[i], p.h[i], p.c[i].1, 1.0/(chan_ratios[p.c[i].1] as f64), &seed, bruit);}
         let s4 = SystemTime::now();
 
         let d1 = s2.duration_since(s1).unwrap();
@@ -330,10 +336,14 @@ pub fn sdl_main(set: Settings) {
     let _i = 0;
     //let mut monte = true;
     
-    let l = 64;
-    let h = 64;
+    let l = 128;
+    let h = 128;
+
+    let nb_chan;
+    if set.mode == Mode::Chan3 { nb_chan = 3; }
+    else { nb_chan = 1; }
     
-    let mut f = Field::new_field(l,h,1);
+    let mut f = Field::new_field(l,h,nb_chan);
     // f.fill_deg(0,0.0,1.0); 
     // f.fill(0,0.15);
     // f.fill_rng(0);
@@ -385,10 +395,15 @@ pub fn sdl_main(set: Settings) {
     */
 
     match set.mode {
-        Mode::Lenia | Mode::Learning | Mode::Chan3 => {
+        Mode::Lenia | Mode::Learning => {
             (k,k_sum) = kernel_init(Kernel::Bumpy(&p));
-            // println!("{:?}", k);
+            println!("\n{:?}", k);
+            println!("k.len() : {}", k.len());
         },
+        Mode::Chan3 => {
+            // (k,k_sum) = claude_kernel(&p);
+            (k,k_sum) = kernel_init(Kernel::Bumpy(&p));
+        }
         Mode::Smooth => {
             (k,k_sum) = kernel_init(Kernel::Radical(&p));
         },
@@ -428,7 +443,11 @@ pub fn sdl_main(set: Settings) {
     let mut save_compt = 1;
 
     let mut ev = false;
-    let mut bruit = 0.0;
+
+    let f_max = (1.0/2.0, 1.0/2.0, 1.0/(frames as f64)*2.0);
+
+    let mut bruit = 0.3;
+    let seed = generate_seed(f_max, 10);
 
     let mut show_kernel = false;
     let mut show_tore = false;
@@ -454,7 +473,11 @@ pub fn sdl_main(set: Settings) {
     'running: loop {
         let start = SystemTime::now();
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        let background_color;
+        if set.mode == Mode::Chan3 { background_color = Color::RGB(255, 255, 255); }
+        else {background_color = Color::RGB(0, 0, 0); }
+
+        canvas.set_draw_color(background_color);
         canvas.clear();
         /*
         if i == 254 || (i == 0)&&(!monte){
@@ -478,7 +501,7 @@ pub fn sdl_main(set: Settings) {
         // println!("frame n°{}\n", compt);
 
         if ev {
-            evolve(&set, &mut f, &k, 1.0/frames as f64, &mut neigh_sum, &p, &chan_ratios, bruit);
+            evolve(&set, &mut f, &k, 1.0/frames as f64, &mut neigh_sum, &p, &chan_ratios, &seed, bruit);
         }
 
         if one_frame {
@@ -556,6 +579,7 @@ pub fn sdl_main(set: Settings) {
             // println!("xy : ({},{})", x, y);
 
             f.add(&set, x, y);
+            // println!("{:?}", f.m[2]);
             // f.add(&set, 7, 1);
             add = false;
         }
@@ -639,6 +663,12 @@ pub fn sdl_main(set: Settings) {
                 },
                 Event::KeyDown { keycode: Some(Keycode::D), .. } => {
                     if set.mode != Mode::Gol { downscale(&mut f, &mut k, &mut k_sum, &mut p, &mut pixel_size);}
+                },
+                Event::KeyDown { keycode: Some(Keycode::P), .. } => {
+                    plot_kernels(&p, &k_sum, "hydro_kernel", "tadam !", &vec![(255,0,0); 15]).unwrap(); 
+                },
+                Event::KeyDown { keycode: Some(Keycode::H), .. } => {
+                    plot_growth(&p, "3chan_growth", "tadam !", &vec![(255,0,0); 15]).unwrap(); 
                 },
                 Event::KeyDown { keycode: Some(Keycode::Backspace), .. } => {
                     f.fill(0, 0.0);
