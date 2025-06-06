@@ -140,15 +140,16 @@ pub fn file_test(){
 
 fn main() {
 
-    let set = Settings {
+    let mut set = Settings {
         mode: Mode::Lenia,
         // mode: Mode::Gol,
+        // motif: Motif::Agent(Agent::Orbium),
         motif: Motif::Agent(Agent::Hydrogeminium),
         // motif: Motif::Rand(30,30),
     };
 
     // kernel_test(Kernel::Ring, 13);
-    sdl_main(set);
+    sdl_main(&mut set);
 
 
     let mut rng = rand::thread_rng();

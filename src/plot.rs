@@ -73,6 +73,18 @@ pub fn plot_growth(p: &Param, name: &str, caption: &str, colors: &Vec<(u8, u8, u
 }
 
 
+pub fn plot_bruit(seed: &Seed, ampli: f64, name: &str, caption: &str, colors: &Vec<(u8, u8, u8)>) -> Result<(), Box<dyn std::error::Error>>{
+    
+    let mut func: Vec<Box<dyn Fn(f32) -> f32>> = vec![];
+
+    func.push(Box::new( move |t: f32| { bruit_rand(&seed, 0, 0, t.into(), ampli) as f32}));
+
+    plot_functions(name, caption, &func, &colors)?;
+
+    Ok(())
+}
+
+
 pub fn plot_functions<F: Sized>(name: &str, caption: &str, func: &Vec<F>, colors: &Vec<(u8,u8,u8)>) -> Result<(), Box<dyn std::error::Error>> where F: Fn(f32) -> f32, {
 
     let path = format!("storage/plots/{}.png",name);
@@ -84,14 +96,14 @@ pub fn plot_functions<F: Sized>(name: &str, caption: &str, func: &Vec<F>, colors
         .margin(5)
         .x_label_area_size(30)
         .y_label_area_size(30)
-        .build_cartesian_2d(-2f32..2f32, -0f32..0.01f32)?;
+        .build_cartesian_2d(-10f32..10f32, -1.5f32..3.5f32)?;
 
     chart.configure_mesh().draw()?;
 
     for i in 0..func.len(){
         chart
             .draw_series(LineSeries::new(
-                    (-100..=100).map(|x| (x as f32 / 100.0)*2.0).map(|x| (x, func[i](x))),
+                    (-1000..=1000).map(|x| (x as f32 / 100.0)*10.0).map(|x| (x, func[i](x))),
                     &RGBColor(colors[i].0,colors[i].1,colors[i].2),
                     ))?;
     }

@@ -317,7 +317,7 @@ pub fn evolve(set: &Settings, f: &mut Field, k: &Vec<Vec<Vec<f64>>>, dt: f64, ne
 
 }
 
-pub fn sdl_main(set: Settings) {
+pub fn sdl_main(set: &mut Settings) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -335,11 +335,14 @@ pub fn sdl_main(set: Settings) {
     let mut event_pump = sdl_context.event_pump().unwrap();
     let _i = 0;
     //let mut monte = true;
-    
-    let l = 128;
-    let h = 128;
+    let mut l = 64;
+    let mut h = 64;
+    if set.motif == Motif::Agent(Agent::Hydrogeminium) {
+        l = 100;
+        h = 100;
+    }
 
-    let nb_chan;
+    let mut nb_chan;
     if set.mode == Mode::Chan3 { nb_chan = 3; }
     else { nb_chan = 1; }
     
@@ -397,8 +400,8 @@ pub fn sdl_main(set: Settings) {
     match set.mode {
         Mode::Lenia | Mode::Learning => {
             (k,k_sum) = kernel_init(Kernel::Bumpy(&p));
-            println!("\n{:?}", k);
-            println!("k.len() : {}", k.len());
+            // println!("\n{:?}", k);
+            // println!("k.len() : {}", k.len());
         },
         Mode::Chan3 => {
             // (k,k_sum) = claude_kernel(&p);
@@ -444,10 +447,17 @@ pub fn sdl_main(set: Settings) {
 
     let mut ev = false;
 
-    let f_max = (1.0/2.0, 1.0/2.0, 1.0/(frames as f64)*2.0);
+    let mut f_max = (1.0/2.0, 1.0/2.0, (frames as f64)/2.0);
 
-    let mut bruit = 0.3;
-    let seed = generate_seed(f_max, 10);
+    let mut bruit = 14.0;
+    let mut seed = generate_seed(f_max, 20);
+
+    let mut change_motif = false;
+    let mut up = 1;
+
+    let mut resistance_start = 0.0;
+    let mut sample_o = vec![];
+    let mut sample_h = vec![];
 
     let mut show_kernel = false;
     let mut show_tore = false;
@@ -578,7 +588,7 @@ pub fn sdl_main(set: Settings) {
 
             // println!("xy : ({},{})", x, y);
 
-            f.add(&set, x, y);
+            f.add(&set, x, y, up);
             // println!("{:?}", f.m[2]);
             // f.add(&set, 7, 1);
             add = false;
@@ -606,7 +616,37 @@ pub fn sdl_main(set: Settings) {
             zoom_out = false;
         }
 
-        
+        if change_motif {
+
+            l = 64*up;
+            h = 64*up;
+            if set.motif == Motif::Agent(Agent::Hydrogeminium) {
+                l = 100*up;
+                h = 100*up;
+            }
+
+            if set.mode == Mode::Chan3 { nb_chan = 3; }
+            else { nb_chan = 1; }
+
+            f = Field::new_field(l,h,nb_chan);
+            // f.fill_deg(0,0.0,1.0); 
+            // f.fill(0,0.15);
+            // f.fill_rng(0);
+            // f.add(Motif::Rand, 35, 35);
+
+            p = Param::param_init(&set);
+            chan_ratios = vec![0; f.nb_channels];
+
+            for i in 0..p.nb_kernels{
+                chan_ratios[p.c[i].1] += 1;
+            }
+
+            p.gr = p.gr*2;
+            f.k_size = 2*p.gr +1;
+            (k,k_sum) = kernel_init(Kernel::Bumpy(&p));
+
+            change_motif = false;
+        }
 
         let mut update_x = false;
 
@@ -615,7 +655,32 @@ pub fn sdl_main(set: Settings) {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     //println!("Field : {:?}\n", f.m);
+                    println!("Orbium : {:?}", sample_o);
+                    let mut moy_o = 0.0;
+                    for i in 0..sample_o.len(){
+                        moy_o += sample_o[i];
+                    }
+                    println!("{}", moy_o/sample_o.len() as f64);
+
+
+                    println!("Hydrogeminium : {:?}", sample_h);
+                    let mut moy = 0.0;
+                    for i in 0..sample_h.len(){
+                        moy += sample_h[i];
+                    }
+                    println!("{}", moy/sample_h.len() as f64);
+
                     break 'running
+                },
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    set.motif = Motif::Agent(Agent::Orbium);
+
+                    change_motif = true;
+                },
+                Event::KeyDown { keycode: Some(Keycode::Z), .. } => {
+                    set.motif = Motif::Agent(Agent::Hydrogeminium);
+
+                    change_motif = true;
                 },
                 Event::KeyDown { keycode: Some(Keycode::S), .. } => {
                     let name = format!("storage/save/s_{}.txt",save_compt);
@@ -631,9 +696,6 @@ pub fn sdl_main(set: Settings) {
                 },
                 Event::KeyDown { keycode: Some(Keycode::K), .. } => {
                     show_kernel = !show_kernel;
-                },
-                Event::KeyDown { keycode: Some(Keycode::T), .. } => {
-                    show_tore = !show_tore;
                 },
                 Event::KeyDown { keycode: Some(Keycode::C), .. } => {
                     show_scale = !show_scale;
@@ -653,16 +715,41 @@ pub fn sdl_main(set: Settings) {
                 Event::KeyDown { keycode: Some(Keycode::G), .. } => {
                     bruit += 0.1;
                     println!("bruit : {}", bruit);
+                    plot_bruit(&seed, bruit, "bruit", "HUH", &vec![(0,0,255)]).unwrap();   
                 },
                 Event::KeyDown { keycode: Some(Keycode::F), .. } => {
                     bruit -= 0.1;
                     println!("bruit : {}", bruit);
+                    plot_bruit(&seed, bruit, "bruit", "HUH", &vec![(0,0,255)]).unwrap();   
+                },
+                Event::KeyDown { keycode: Some(Keycode::T), .. } => {
+
+                    let chrono = f.t-resistance_start;
+                    if set.motif == Motif::Agent(Agent::Orbium) {
+                        sample_o.push(chrono);
+                    }
+                    else { sample_h.push(chrono);}
+
+                },
+                Event::KeyDown { keycode: Some(Keycode::Y), .. } => {
+                    seed = generate_seed(f_max, 20);
+                    println!("{:?}", seed);
                 },
                 Event::KeyDown { keycode: Some(Keycode::U), .. } => {
                     if set.mode != Mode::Gol { upscale(&mut f, &mut k, &mut k_sum, &mut p, &mut pixel_size);}
+                    f_max.0 = f_max.0/2.0;
+                    f_max.1 = f_max.1/2.0;
+                    seed = generate_seed(f_max, 20);
+                    up += 1;
+                    println!("{:?}", seed);
                 },
                 Event::KeyDown { keycode: Some(Keycode::D), .. } => {
                     if set.mode != Mode::Gol { downscale(&mut f, &mut k, &mut k_sum, &mut p, &mut pixel_size);}
+                    f_max.0 = f_max.0*2.0;
+                    f_max.1 = f_max.1*2.0;
+                    seed = generate_seed(f_max, 20);
+                    up -= 1;
+                    println!("{:?}", seed);
                 },
                 Event::KeyDown { keycode: Some(Keycode::P), .. } => {
                     plot_kernels(&p, &k_sum, "hydro_kernel", "tadam !", &vec![(255,0,0); 15]).unwrap(); 
@@ -672,6 +759,8 @@ pub fn sdl_main(set: Settings) {
                 },
                 Event::KeyDown { keycode: Some(Keycode::Backspace), .. } => {
                     f.fill(0, 0.0);
+                    seed = generate_seed(f_max, 20);
+                    println!("{:?}", seed);
                 },
                 Event::MouseButtonDown { mouse_btn: MouseButton::Left,.. } => {
                     if !drag {
@@ -685,6 +774,7 @@ pub fn sdl_main(set: Settings) {
                         add_wait = true;
                         update_x = true;
                     }
+                    resistance_start = f.t;
                 },
                 Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => { 
                     drag = false;
@@ -721,7 +811,7 @@ pub fn sdl_main(set: Settings) {
         
 
         // The rest of the game loop goes here...
-        //let _res = window.set_fullscreen(Desktop);
+        // let _res = window.set_fullscreen(Desktop);
 
         canvas.present();
 
@@ -734,7 +824,7 @@ pub fn sdl_main(set: Settings) {
 
         if duration < f_time{
             // println!("fps : {}", fps);
-            ::std::thread::sleep(f_time- duration);
+            // ::std::thread::sleep(f_time- duration);
         }
     }
 }

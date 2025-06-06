@@ -23,12 +23,14 @@ pub enum Kernel<'a> {
 }
 
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub enum Motif {
     Agent(Agent),
     Rand(usize, usize),
 }
 
 #[derive(Clone)]
+#[derive(PartialEq)]
 pub enum Agent {
     Orbium,
     Hydrogeminium,
@@ -89,7 +91,7 @@ impl Field {
         }
     }
 
-    pub fn add(self:&mut Field, set: &Settings, x: usize, y: usize){
+    pub fn add(self:&mut Field, set: &Settings, x: usize, y: usize, up: usize){
         let mut m: Vec<Vec<Vec<f64>>> = vec![];
         match &set.motif{
             Motif::Agent(agent) => {
@@ -115,16 +117,23 @@ impl Field {
             }
         }
         
-        println!("test1");
+        println!("{}", up);
         
         for k in 0..m.len() {
-            println!("y + m[k][0].len() : {}, self.l: {}", y + m[k][0].len(), self.l);
-            println!("x + m[k].len() : {}, self.l: {}", x + m[k].len(), self.h);
-            if (y + m[k][0].len() < self.l) && (x + m[k].len() < self.h){
-                println!("test2: {}", k);
+            // println!("y + m[k][0].len()*up : {}, self.l: {}", y + m[k][0].len()*up, self.l);
+            // println!("x + m[k].len()*up : {}, self.l: {}", x + m[k].len()*up, self.h);
+            if (y + m[k][0].len()*up < self.l) && (x + m[k].len()*up < self.h){
+                // println!("test2: {}", k);
                 for i in 0..m[k].len(){
+                    // println!("test2: {}", i);
                     for j in 0..m[k][0].len(){
-                        self.m[k][x+i][y+j] = m[k][i][j];
+                        // println!("test2: {}", j);
+                        for u in 0..up{
+                            for v in 0..up{
+                                // if (i == 0) {println!("{}", y+j*up+u);}
+                                self.m[k][x+i*up+v][y+j*up+u] = m[k][i][j];
+                            }
+                        }
                     }
                 }
             }
@@ -392,7 +401,7 @@ fn ring_kernel2(_h1: usize, _h2: usize) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
 }
 
 fn bumpy_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
-    println!("p : {:?}", p);
+    // println!("p : {:?}", p);
     let h = 2*p.gr +1;
     let mut result = vec![vec![vec![0.0 ; h]; h]; p.nb_kernels];
 

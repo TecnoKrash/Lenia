@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use crate::init::*;
 use crate::imgep::*;
 
+#[derive(Debug)]
 pub struct Seed {
     pub freqs: (Vec<f64>, Vec<f64>, Vec<f64>),
     pub phases: (Vec<f64>, Vec<f64>, Vec<f64>),
@@ -46,10 +47,11 @@ pub fn growth_lenia(f: &mut Field, new_f: Vec<Vec<f64>>, dt: f64, mu: f64, sigma
             let rate = h*(-1.0 + 2.0*gaussian(mu,sigma, new_f[mk+i][mk+j]));
 
             // if rate > 0.0 { println!("rate : {}\n", rate); }
+            let noise = 1.0 + bruit_rand(seed, i,j,f.t, bruit);
 
-            f.m[chan][i][j] += dt*rate*chan_ratio*bruit_rand(seed, i,j,f.t, bruit);
+            f.m[chan][i][j] += dt*rate*noise*chan_ratio;
 
-            if f.m[chan][i][j] > 0.0 {println!("rate : {}, new_val : {}\n", rate, f.m[chan][i][j]);}
+            // if f.m[chan][i][j] > 0.0 {println!("rate : {}, new_val : {}, noise: {}\n", rate, f.m[chan][i][j], noise);}
 
 
             if f.m[chan][i][j] < 0.0 {f.m[chan][i][j] = 0.0}
@@ -147,8 +149,10 @@ pub fn generate_seed(fmax: (f64, f64, f64), nb_sin: usize) -> Seed{
 
     for _i in 0..nb_sin {
         freqs.0.push(rng.gen::<f64>()*fmax.0);
-        freqs.1.push(rng.gen::<f64>()*fmax.0);
-        freqs.2.push(rng.gen::<f64>()*fmax.0);
+        freqs.1.push(rng.gen::<f64>()*fmax.1);
+        freqs.2.push(rng.gen::<f64>()*fmax.2);
+        // freqs.2.push(fmax.2/2.0 + rng.gen::<f64>()*(fmax.2/2.0));
+        // println!("freqs.2[i]: {}", freqs.2[i]);
         phases.0.push(rng.gen::<f64>()*2.0*PI);
         phases.1.push(rng.gen::<f64>()*2.0*PI);
         phases.2.push(rng.gen::<f64>()*2.0*PI);
@@ -167,8 +171,12 @@ pub fn bruit_rand(seed: &Seed, x: usize, y: usize, t: f64, ampli: f64) -> f64{
     let y_f64 = y as f64;
     
     for i in 0..seed.freqs.0.len() {
-        res += (2.0*PI*seed.freqs.0[i]*x_f64 + seed.phases.0[i]).sin() * (2.0*PI*seed.freqs.1[i]*y_f64 + seed.phases.1[i]).sin() * (2.0*PI*seed.freqs.2[i]*t + seed.phases.2[i]).sin()*ampli;
+        // let test = (2.0*PI*seed.freqs.0[i]*x_f64 + seed.phases.0[i]).sin() * (2.0*PI*seed.freqs.1[i]*y_f64 + seed.phases.1[i]).sin()* (2.0*PI*seed.freqs.2[i]*t + seed.phases.2[i]).sin()*ampli;
+        // println!("test: {}", test);
+        res += (2.0*PI*seed.freqs.0[i]*x_f64 + seed.phases.0[i]).sin()*(2.0*PI*seed.freqs.1[i]*y_f64 + seed.phases.1[i]).sin()*(2.0*PI*seed.freqs.2[i]*t + seed.phases.2[i]).sin();
     }
 
-    1.0 + res
+    // println!("ampli: {}", ampli);
+
+    (res/seed.freqs.0.len() as f64)*ampli
 }
