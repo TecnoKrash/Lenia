@@ -22,7 +22,7 @@ impl Add for Vector{
 }
 
 impl Vector {
-    pub fn scal(mut self, l: f64){
+    pub fn _scal(mut self, l: f64){
         self.co = self.co.iter().map(|x| l*x).collect();
     }
 }
@@ -42,6 +42,7 @@ pub struct Param {
     pub c: Vec<(usize,usize)>,  // input and output channels use by each kernels
 }
 
+// Init of the parameters depending on the settings
 impl Param {
     pub fn param_init(set: &Settings) -> Param{
         match set.mode {
@@ -178,12 +179,7 @@ impl Param {
     }
 }
 
-
-
-
-
-
-
+// Attempt to find the center of mass of the agent in the field (not working on edges)
 pub fn mass_center(f: &Field) -> (usize,usize){
     let sum: f64 = f.m.iter().flat_map(|c| c.iter().flat_map(|x| x.iter())).sum();
 
@@ -195,21 +191,14 @@ pub fn mass_center(f: &Field) -> (usize,usize){
                 let xy: f64 = f.m[c][x][y]/sum;
                 sumx += xy*(x as f64);
                 sumy += xy*(y as f64);
-                // if f.m[c][x][y] > 0.0{
-                //     println!("x: {}, y: {}, xy: {}, sumi: {}\n", x, y, xy, sumi);
-                // }
             }
         }
     }
 
-    // let x: f64 = (0..f.nb_channels).zip((0..f.h).zip(0..f.l)).map(|(c,(x,y))| (f.m[c][x][y]/sum)*(x as f64)).sum();
-    // let y: f64 = (0..f.nb_channels).zip((0..f.h).zip(0..f.l)).map(|(c,(x,y))| (f.m[c][x][y]/sum)*(y as f64)).sum();
-
-    // println!("sum: {}, x: {}, y: {}\n", sum, sumx, sumy);
-
     (sumx as usize, sumy as usize)
 }
 
+// Compute the sum of the values in the indicated column
 fn column_sum(f: &Field, y: usize) -> f64{
     let mut res = 0.;
     for i in 0..f.h{
@@ -218,29 +207,24 @@ fn column_sum(f: &Field, y: usize) -> f64{
     res
 }
 
-
+// Try to find the center position of the agent based on a point that is part of an agent (returns
+// new position and the relative distance to the sides of the agent)
 pub fn position(f: &Field, (x,y): (usize,usize)) -> ((usize,usize), (usize, usize)){
     let mut dist = [0; 4];
 
-    // println!("x: {}, y : {}\n", x, y);
-
     //up
-    // while f.m[0][x][(y-dist[0])%f.h] != 0.{ dist[0] += 1}
     while (column_sum(&f,(y+f.l-dist[0])%f.l) != 0.) && (dist[0] < f.l) { dist[0] += 1}
     //down
-    // while f.m[0][x][(y+dist[1])%f.h] != 0.{ dist[1] += 1}
     while (column_sum(&f,(y+f.l+dist[1])%f.l) != 0.) && (dist[1] < f.l) { dist[1] += 1}
     //left
-    // while f.m[0][(x-dist[2])%f.l][y] != 0.{ dist[2] += 1}
     while (f.m[0][(x+f.h-dist[2])%f.h].iter().sum::<f64>() != 0.) && (dist[2] < f.h) { dist[2] += 1}
     //right
-    // while f.m[0][(x+dist[3])%f.l][y] != 0.{ dist[3] += 1}
     while (f.m[0][(x+f.h+dist[3])%f.h].iter().sum::<f64>() != 0.) && (dist[3] < f.h) { dist[3] += 1}
 
     (((x+f.h-dist[2])%f.h+1, (y+f.l-dist[0])%f.l+1), (dist[2]+dist[3]+1-1,dist[0]+dist[1]+1-1))
 }
 
-
+// Computes random parameters for the automaton
 pub fn random_param() -> Param{
     let mut p = Param {
                     nb_kernels: 1,
@@ -282,81 +266,3 @@ pub fn random_param() -> Param{
 
     p
 }
-
-/*
-pub fn single_ring(p: & mut Param){
-    
-    p.gr = 25/2;
-    p.r = 1.0;
-
-    p.nb_bump = 1;
-
-    p.a.push(0.5);
-    p.w.push(0.15);
-    p.b.push(1.0);
-
-    p.mu = 0.15;
-    p.sigma = 0.017;
-}
-
-pub fn triple_ring(p: & mut Param){
-
-    p.r = 1.0;
-
-    p.nb_bump = 3;
-
-    p.a = vec![1.0/6.0,3.0/6.0,5.0/6.0];
-    p.w = vec![0.05,0.05,0.05];
-    p.b = vec![0.5, 1.0, 0.677];
-
-    p.mu = 0.26;
-    p.sigma = 0.036;
-
-}
-
-pub fn goal_sample(goal_lib: &Vec<Vec<f64>>, dist: &Vec<f64>){
-    let mut rng = rand::thread_rng();
-    let close = 0;
-    let very_close = 0;
-
-    let mut target_goal: (f64, f64) = (0.1,0.2);
-
-    while close < 1 && very_close > 2{
-        let choix = rng.gen::<f64>();
-
-        if choix < 0.2 {
-            let id_best: usize = 42;
-            target_goal.0 = dist[id_best] + (rng.gen::<f64>()*0.45 - 0.22)/4.0;
-            target_goal.1 = dist[id_best] + (rng.gen::<f64>()*0.45 - 0.22)/4.0;
-        }
-        else{
-            if choix < 0.7{
-                target_goal.0 = (rng.gen::<f64>()*0.45 - 0.22)/4.0;
-                target_goal.1 = (rng.gen::<f64>()*0.45 - 0.22)/4.0;
-                
-            }
-        }
-    }
-}
-
-kernels = [
-  {"b":[1],"m":0.272,"s":0.0595,"h":0.138,"r":0.91,"c0":0,"c1":0},
-  {"b":[1],"m":0.349,"s":0.1585,"h":0.48,"r":0.62,"c0":0,"c1":0},
-  {"b":[1,1/4],"m":0.2,"s":0.0332,"h":0.284,"r":0.5,"c0":0,"c1":0},
-  {"b":[0,1],"m":0.114,"s":0.0528,"h":0.256,"r":0.97,"c0":1,"c1":1},
-  {"b":[1],"m":0.447,"s":0.0777,"h":0.5,"r":0.72,"c0":1,"c1":1},
-  {"b":[5/6,1],"m":0.247,"s":0.0342,"h":0.622,"r":0.8,"c0":1,"c1":1},
-  {"b":[1],"m":0.21,"s":0.0617,"h":0.35,"r":0.96,"c0":2,"c1":2},
-  {"b":[1],"m":0.462,"s":0.1192,"h":0.218,"r":0.56,"c0":2,"c1":2},
-  {"b":[1],"m":0.446,"s":0.1793,"h":0.556,"r":0.78,"c0":2,"c1":2},
-  {"b":[11/12,1],"m":0.327,"s":0.1408,"h":0.344,"r":0.79,"c0":0,"c1":1},
-  {"b":[3/4,1],"m":0.476,"s":0.0995,"h":0.456,"r":0.5,"c0":0,"c1":2},
-  {"b":[11/12,1],"m":0.379,"s":0.0697,"h":0.67,"r":0.72,"c0":1,"c1":0},
-  {"b":[1],"m":0.262,"s":0.0877,"h":0.42,"r":0.68,"c0":1,"c1":2},
-  {"b":[1/6,1,0],"m":0.412,"s":0.1101,"h":0.43,"r":0.82,"c0":2,"c1":0},
-  {"b":[1],"m":0.201,"s":0.0786,"h":0.278,"r":0.82,"c0":2,"c1":1}]
-
-*/
-
-
-

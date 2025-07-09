@@ -143,24 +143,15 @@ fn main() {
     let mut set = Settings {
         mode: Mode::Lenia,
         // mode: Mode::Gol,
-        // motif: Motif::Agent(Agent::Orbium),
-        motif: Motif::Agent(Agent::Hydrogeminium),
+        motif: Motif::Agent(Agent::Orbium),
+        // motif: Motif::Agent(Agent::Hydrogeminium),
         // motif: Motif::Rand(30,30),
     };
-
-    // kernel_test(Kernel::Ring, 13);
     sdl_main(&mut set);
-
-
-    let mut rng = rand::thread_rng();
-
-    // println!("{}", (rng.gen::<f64>()*100.0 )as u32);
-    
     // duration_test();
     // convolution_test(3, 2, 0);
     // gaussian_test(1000, 0.15, 0.015)
     // convolution_correction_test() 
     // color_test();
-    // println!("{}\n", 9.99 as u8);
     // file_test();
 }

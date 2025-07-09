@@ -6,6 +6,7 @@ use crate::file::*;
 use crate::imgep::*;
 use crate::sdl::*;
 
+// The state of the automaton
 pub struct Field {
     pub t: f64,
     pub l: usize,
@@ -15,13 +16,13 @@ pub struct Field {
     pub m: Vec<Vec<Vec<f64>>>,
 }
 
+// Diffrent types of kernels
 pub enum Kernel<'a> {
-    Ring1(usize),
-    Ring2(usize, usize),
     Bumpy(& 'a Param),
     Radical(& 'a Param),
 }
 
+// Diffrent types of  
 #[derive(Clone)]
 #[derive(PartialEq)]
 pub enum Motif {
@@ -29,6 +30,7 @@ pub enum Motif {
     Rand(usize, usize),
 }
 
+//Diffrent types of agents
 #[derive(Clone)]
 #[derive(PartialEq)]
 pub enum Agent {
@@ -50,18 +52,20 @@ impl Field {
             m: vec![vec![vec![0.; l]; h]; nb_channels],
         }
     }
-
-    pub fn to_tore(mut self: Field, kernel: Vec<Vec<f64>>){
+    // Expanding to tore format
+    pub fn _to_tore(mut self: Field, kernel: Vec<Vec<f64>>){
         for i in 0..self.nb_channels{
             self.m[i] = tore_format(&self.m[i], &kernel);
         }
         self.k_size = kernel.len();
     }
 
+    //Interface to optain values in the field
     pub fn get_xy(self: &Field, x: usize, y: usize, chanel: usize) -> f64{
         self.m[chanel][x][y]
     }
 
+    // Fill the entire field with the desired value
     pub fn fill(self: &mut Field,chan: usize, val: f64){
         for i in 0..self.h{
             for j in 0..self.l{
@@ -69,8 +73,9 @@ impl Field {
             }
         }
     }
-
-    pub fn fill_deg(self: &mut Field, chan: usize, start: f64, end: f64){
+    
+    // Fills the entire field whit a gradient on column from start to end values
+    pub fn _fill_grad(self: &mut Field, chan: usize, start: f64, end: f64){
         for i in 0..self.h{
             for j in 0..self.l{
                 let fi = i as f64;
@@ -82,7 +87,8 @@ impl Field {
         }
     }
 
-    pub fn fill_rng(self:&mut Field, chan: usize){
+    // Fill the entire field with a random value
+    pub fn _fill_rng(self:&mut Field, chan: usize){
         let mut rng = rand::thread_rng();
         for i in 0..self.h{
             for j in 0..self.l{
@@ -91,6 +97,7 @@ impl Field {
         }
     }
 
+    // Adds a motif at the specified coordinates
     pub fn add(self:&mut Field, set: &Settings, x: usize, y: usize, up: usize){
         let mut m: Vec<Vec<Vec<f64>>> = vec![];
         match &set.motif{
@@ -112,25 +119,16 @@ impl Field {
 
             },
             Motif::Rand(h, l) => {
-                println!("huh");
                 m.push(random_square(*h, *l, set.mode.clone()));
             }
         }
         
-        println!("{}", up);
-        
         for k in 0..m.len() {
-            // println!("y + m[k][0].len()*up : {}, self.l: {}", y + m[k][0].len()*up, self.l);
-            // println!("x + m[k].len()*up : {}, self.l: {}", x + m[k].len()*up, self.h);
             if (y + m[k][0].len()*up < self.l) && (x + m[k].len()*up < self.h){
-                // println!("test2: {}", k);
                 for i in 0..m[k].len(){
-                    // println!("test2: {}", i);
                     for j in 0..m[k][0].len(){
-                        // println!("test2: {}", j);
                         for u in 0..up{
                             for v in 0..up{
-                                // if (i == 0) {println!("{}", y+j*up+u);}
                                 self.m[k][x+i*up+v][y+j*up+u] = m[k][i][j];
                             }
                         }
@@ -143,7 +141,7 @@ impl Field {
 }
 
 
-
+// NOTE: Initialisation tables of the agents
 fn orbium() -> Vec<Vec<f64>>{
      vec![[0.0,0.0,0.0,0.0,0.0,0.0,0.1,0.14,0.1,0.0,0.0,0.03,0.03,0.0,0.0,0.3,0.0,0.0,0.0,0.0].to_vec(), 
       [0.0,0.0,0.0,0.0,0.0,0.08,0.24,0.3,0.3,0.18,0.14,0.15,0.16,0.15,0.09,0.2,0.0,0.0,0.0,0.0].to_vec(), 
@@ -303,7 +301,7 @@ fn aquarium() -> Vec<Vec<Vec<f64>>> {
      vec![0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.08,0.07,0.03,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]]
 }
 
-
+// Generates a random square of the desired size
 fn random_square(h: usize, l: usize, _mode: Mode) -> Vec<Vec<f64>>{
     let mut rng = rand::thread_rng();
 
@@ -312,16 +310,6 @@ fn random_square(h: usize, l: usize, _mode: Mode) -> Vec<Vec<f64>>{
         let mut ligne: Vec<f64> = Vec::with_capacity(l);
         for _j in 0..l{
             let r = rng.gen::<f64>();
-            // println!("{}\n", r);
-
-            /*
-            if mode == Mode::Gol {
-                if 1.0 - r < r - 0.0 { ligne.push(1.0); }
-                else { ligne.push(0.0); }
-            }
-            else { ligne.push(r); }
-            */
-
             ligne.push(r);
         }
         result.push(ligne);
@@ -329,14 +317,9 @@ fn random_square(h: usize, l: usize, _mode: Mode) -> Vec<Vec<f64>>{
     result
 }
 
+// Initialisation of the kernel depending on the specified shape
 pub fn kernel_init(k_type: Kernel) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
     match k_type{
-        Kernel::Ring1(h) => {
-            return ring_kernel1(h)
-        },
-        Kernel::Ring2(h1, h2) => {
-            return ring_kernel2(h1, h2)
-        },
         Kernel::Bumpy(p) => {
             return bumpy_kernel(&p);
         },
@@ -346,62 +329,8 @@ pub fn kernel_init(k_type: Kernel) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
     }
 }
 
-
-fn ring_kernel1(h: usize) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
-    let mut result = vec![vec![0.0 ; h]; h];
-
-    let rayon = h/2;
-    println!("rayon : {}", rayon);
-    let mut sum = 0.0;
-    
-    for x in 0..h{
-        for y in 0..h {
-            let dx;
-            let dy;
-            if x > rayon { dx =  x-rayon}
-            else { dx = rayon-x}
-            if y > rayon { dy =  y-rayon}
-            else { dy = rayon-y}
-
-            let distance = ((dx*dx + dy*dy) as f64).sqrt()/(rayon as f64);
-            if distance <= 1.0 {
-                let d_gauss = gaussian(0.5,0.15,distance);
-                sum += d_gauss;
-                result[x][y] = d_gauss;
-            }
-        }
-    }
-    
-    for i in 0..h{
-        for j in 0..h{
-            result[i][j] /= sum;
-        }
-    }
-
-
-    /*
-    
-    sum = 0.0;
-
-    for i in 0..h{
-        for j in 0..h{
-            sum += result[i][j];
-        }
-    }
-    
-    println!("{}\n", sum);
-     */
-
-    (vec![],vec![])
-}
-
-
-fn ring_kernel2(_h1: usize, _h2: usize) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
-    (vec![],vec![])
-}
-
+// Initialisaton of a bumpy kernel 
 fn bumpy_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
-    // println!("p : {:?}", p);
     let h = 2*p.gr +1;
     let mut result = vec![vec![vec![0.0 ; h]; h]; p.nb_kernels];
 
@@ -419,21 +348,15 @@ fn bumpy_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
                 else { dy = p.gr-y}
 
                 let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r[k]*(p.gr as f64));
-                // println!("{}", distance);
                 if distance <= 1.0 {
                     for i in 0..p.nb_bump[k]{
-                        // println!("nb_bump: {}, lens: a-{} b-{} w-{}", p.nb_bump[k], p.a.len(), p.b.len(), p.w.len());
                         let d_gauss = p.b[k][i]*gaussian(p.a[k][i],p.w[k][i],distance);
-                        // println!("{}", d_gauss);
                         sum[k] += d_gauss;
                         result[k][x][y] += d_gauss;
                     }
                 }
             }
         }
-        // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
-
-
 
         for i in 0..h{
             for j in 0..h{
@@ -442,79 +365,10 @@ fn bumpy_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
         }
     }
 
-
     (result,sum)
 }
 
-pub fn claude_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
-    let n = 24;
-    let m = ((16 * n) as f64 / 9.0).ceil() as usize;
-
-    // Création de la matrice X
-    let mut x_matrix = vec![vec![0.0; m]; n];
-
-    // Calcul des half sizes
-    let fhs_y = n / 2;
-    let fhs_x = m / 2;
-
-    // Création des grilles y et x bidimensionnelles (équivalent à np.ogrid)
-    let mut y = vec![vec![0.0; m]; n];
-    let mut x = vec![vec![0.0; m]; n];
-
-    for i in 0..n {
-        for j in 0..m {
-            y[i][j] = (i as i32 - fhs_y as i32) as f64;
-            x[i][j] = (j as i32 - fhs_x as i32) as f64;
-        }
-    }
-
-    let mut ks: Vec<Vec<Vec<f64>>> = Vec::new();
-
-    let mut sum_k: Vec<f64> = vec![];
-
-    for (b, r) in p.b.iter().zip(p.r.iter()) {
-        // Calcul de la distance pour chaque point de la grille
-        let mut distance = vec![vec![0.0; m]; n];
-        for i in 0..n {
-            for j in 0..m {
-                distance[i][j] = (x[i][j].powi(2) + y[i][j].powi(2)).sqrt() / r * (b.len() as f64);
-            }
-        }
-
-        // Initialisation de K avec des zéros
-        let mut k = vec![vec![0.0; m]; n];
-
-        let mu = 0.5;
-        let sigma = 0.15;
-
-        for idx in 0..b.len() {
-            for i in 0..n {
-                for j in 0..m {
-                    if distance[i][j] as usize == idx {
-                        k[i][j] += b[idx] * gaussian(mu, sigma, distance[i][j] % 1.0);
-                    }
-                }
-            }
-        }
-
-        // Normalisation de K
-        sum_k.push(k.iter().flatten().sum());
-        let l = sum_k.len()-1;
-        if sum_k[l] != 0.0 {
-            for i in 0..n {
-                for j in 0..m {
-                    k[i][j] /= sum_k[l];
-                }
-            }
-        }
-
-        ks.push(k.into_iter().collect()); // Ou gardez la structure 2D selon vos besoins
-    }
-
-    (ks, sum_k)
-}
-
-
+// Initialisation of a kernel with constant value
 fn radical_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
     println!("p : {:?}", p);
     let h = 2*p.gr +1;
@@ -533,11 +387,9 @@ fn radical_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
                 else { dy = p.gr-y}
 
                 let distance = ((dx*dx + dy*dy) as f64).sqrt()/(p.r[k]*(p.gr as f64));
-                // println!("{}", distance);
                 if distance <= 1.0 {
                     for i in 0..p.nb_bump[k]{
                         let mut d_gauss = p.b[k][i]*gaussian(p.a[k][i],p.w[k][i],distance);
-                        // println!("{}", d_gauss);
                         if 1.0 - d_gauss > d_gauss { d_gauss = 0.0; }
                         else { d_gauss = 1.0; }
                         sum[k] += d_gauss;
@@ -546,8 +398,6 @@ fn radical_kernel(p: &Param) -> (Vec<Vec<Vec<f64>>>, Vec<f64>){
                 }
             }
         }
-        // println!("k: {}, gr: {}, r: {}\na: {:?}\nw: {:?}\nb: {:?}\n", k, gr, r, a, w, b);
-
 
         for i in 0..h{
             for j in 0..h{
